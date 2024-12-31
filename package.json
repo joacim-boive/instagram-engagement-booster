@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "collect-data": "NODE_NO_WARNINGS=1 node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/scripts/collectTrainingData.ts"
+    "collect-data": "NODE_NO_WARNINGS=1 node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/scripts/collectTrainingData.ts",
+    "refresh-token": "NODE_NO_WARNINGS=1 node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/scripts/refreshToken.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,12 @@
     "@types/node": "^22.10.2",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "open": "^10.1.0",
     "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/open": "^6.1.0"
   }
 }
