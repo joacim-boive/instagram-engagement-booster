@@ -10,6 +10,19 @@ export type AiConfig = {
   maxTokens?: number;
 };
 
+export type TrainingMessage = {
+  content: string;
+  author: string;
+  authorId: string;
+  timestamp?: string;
+};
+
+export type Conversation = {
+  messages: TrainingMessage[];
+  postId: string;
+  commentId: string;
+};
+
 export interface AiProvider {
   generateResponse(messages: Message[]): Promise<string>;
   generateStreamingResponse(
@@ -27,4 +40,4 @@ export type ProviderConfig = {
     apiKey: string;
     model: string;
   };
-}; 
+};

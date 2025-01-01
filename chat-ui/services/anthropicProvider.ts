@@ -13,15 +13,16 @@ export class AnthropicProvider implements AiProvider {
   async generateResponse(messages: Message[]): Promise<string> {
     try {
       const formattedMessages = messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
-        content: msg.content
+        role:
+          msg.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+        content: msg.content,
       }));
 
       const response = await this.client.messages.create({
         model: this.model,
         messages: formattedMessages,
         max_tokens: 150,
-        temperature: 0.7
+        temperature: 0.7,
       });
 
       if (response.content[0].type !== 'text') {
@@ -41,8 +42,9 @@ export class AnthropicProvider implements AiProvider {
   ): Promise<void> {
     try {
       const formattedMessages = messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
-        content: msg.content
+        role:
+          msg.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+        content: msg.content,
       }));
 
       const stream = await this.client.messages.create({
@@ -50,11 +52,14 @@ export class AnthropicProvider implements AiProvider {
         messages: formattedMessages,
         max_tokens: 150,
         temperature: 0.7,
-        stream: true
+        stream: true,
       });
 
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text') {
+        if (
+          chunk.type === 'content_block_delta' &&
+          chunk.delta.type === 'text_delta'
+        ) {
           onToken(chunk.delta.text);
         }
       }
@@ -63,4 +68,4 @@ export class AnthropicProvider implements AiProvider {
       throw new Error('Failed to generate streaming response from Anthropic');
     }
   }
-} 
+}

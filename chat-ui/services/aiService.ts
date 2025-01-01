@@ -1,28 +1,24 @@
 import { OpenAiProvider } from '@/services/openaiProvider';
 import { AnthropicProvider } from '@/services/anthropicProvider';
-import { AiProvider, Message, ProviderConfig } from '@/services/ai/types';
+import {
+  AiProvider,
+  Conversation,
+  Message,
+  ProviderConfig,
+} from '@/services/ai/types';
 import { env } from '../app/config/env';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-
-type TrainingMessage = {
-  content: string;
-  author: string;
-  authorId: string;
-  timestamp?: string;
-};
-
-type Conversation = {
-  messages: TrainingMessage[];
-  postId: string;
-  commentId: string;
-};
+import { VectorService } from './vectorService';
 
 export class AiService {
   private systemPrompt: string;
   private trainingData: Conversation[];
   private provider: AiProvider;
   private pageId: string;
+  private vectorService: VectorService;
+  private isInitializing = false;
+  private isInitialized = false;
 
   constructor(config?: ProviderConfig) {
     this.systemPrompt = this.loadSystemPrompt();
@@ -42,6 +38,9 @@ export class AiService {
     } else {
       throw new Error('No valid AI provider configuration found');
     }
+
+    this.vectorService = new VectorService();
+    void this.initializeVectorStore();
   }
 
   private loadFile<T>(path: string, parser?: (data: string) => T): T | string {
@@ -86,7 +85,7 @@ export class AiService {
   async generateResponse(userMessage: string): Promise<string> {
     const messages: Message[] = [
       { role: 'system', content: this.systemPrompt },
-      ...this.getRelevantExamples(userMessage),
+      ...(await this.getRelevantExamples(userMessage)),
       { role: 'user', content: userMessage },
     ];
 
@@ -99,26 +98,49 @@ export class AiService {
   ): Promise<void> {
     const messages: Message[] = [
       { role: 'system', content: this.systemPrompt },
-      ...this.getRelevantExamples(userMessage),
+      ...(await this.getRelevantExamples(userMessage)),
       { role: 'user', content: userMessage },
     ];
 
     return this.provider.generateStreamingResponse(messages, onToken);
   }
 
-  private getRelevantExamples(_userMessage: string): Message[] {
-    const examples: Message[] = [];
-    const sampleConversations = this.trainingData.slice(0, 3);
-
-    for (const conv of sampleConversations) {
-      for (const msg of conv.messages) {
-        examples.push({
-          role: msg.authorId === this.pageId ? 'assistant' : 'user',
-          content: msg.content,
-        });
-      }
+  private async initializeVectorStore() {
+    if (this.isInitialized || this.isInitializing) {
+      return;
     }
 
-    return examples;
+    this.isInitializing = true;
+
+    try {
+      await this.vectorService.initializeFromConversations(this.trainingData);
+      this.isInitialized = true;
+      console.log('Vector store initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize vector store:', error);
+    } finally {
+      this.isInitializing = false;
+    }
+  }
+
+  private async getRelevantExamples(userMessage: string): Promise<Message[]> {
+    try {
+      if (!this.isInitialized) {
+        await this.initializeVectorStore();
+      }
+
+      const similarConversations =
+        await this.vectorService.findSimilarConversations(userMessage, 2, 0.7);
+
+      return similarConversations.flatMap(({ conversation }) =>
+        conversation.messages.map(msg => ({
+          role: msg.authorId === this.pageId ? 'assistant' : 'user',
+          content: msg.content,
+        }))
+      );
+    } catch (error) {
+      console.error('Error getting relevant examples:', error);
+      return [];
+    }
   }
 }
