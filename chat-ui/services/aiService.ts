@@ -105,7 +105,7 @@ export class AiService {
     return this.provider.generateStreamingResponse(messages, onToken);
   }
 
-  private async initializeVectorStore() {
+  public async initializeVectorStore() {
     if (this.isInitialized || this.isInitializing) {
       return;
     }

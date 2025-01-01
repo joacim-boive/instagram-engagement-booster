@@ -1,5 +1,5 @@
 import { AiService } from '@/services/aiService';
-import { env } from '@/config/env';
+import { env } from '../app/config/env';
 
 // Configure AI providers
 const config = {
