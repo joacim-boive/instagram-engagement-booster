@@ -12,6 +12,6 @@
     "types": ["node"],
     "allowJs": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "chat-ui/app/page.tsx", "chat-ui/app/api/chat/route.ts", "chat-ui/src/services/ai"],
   "exclude": ["node_modules"]
 } 
