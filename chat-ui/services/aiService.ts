@@ -28,7 +28,7 @@ export class AiService {
     this.systemPrompt = this.loadSystemPrompt();
     this.trainingData = this.loadTrainingData();
     this.pageId = env.facebookPageId;
-    
+
     if (config?.openai?.apiKey) {
       this.provider = new OpenAiProvider(
         config.openai.apiKey,
@@ -49,7 +49,7 @@ export class AiService {
       const filePath = join(process.cwd(), path);
       const fileContent = readFileSync(filePath, 'utf-8');
       console.log(`Loaded file from: ${filePath}`);
-      
+
       return parser ? parser(fileContent) : fileContent;
     } catch (error) {
       console.error(`Error loading file ${path}:`, error);
@@ -61,7 +61,7 @@ export class AiService {
     try {
       const path = env.systemPromptPath || 'chat-ui/prompts/system-prompt.txt';
       const data = this.loadFile(path) as string;
-       console.log(`Loaded size of system prompt: ${data.length}`);
+      console.log(`Loaded size of system prompt: ${data.length}`);
       return data;
     } catch (error) {
       console.warn('Falling back to default system prompt');
@@ -87,10 +87,23 @@ export class AiService {
     const messages: Message[] = [
       { role: 'system', content: this.systemPrompt },
       ...this.getRelevantExamples(userMessage),
-      { role: 'user', content: userMessage }
+      { role: 'user', content: userMessage },
     ];
 
     return this.provider.generateResponse(messages);
+  }
+
+  async generateStreamingResponse(
+    userMessage: string,
+    onToken: (token: string) => void
+  ): Promise<void> {
+    const messages: Message[] = [
+      { role: 'system', content: this.systemPrompt },
+      ...this.getRelevantExamples(userMessage),
+      { role: 'user', content: userMessage },
+    ];
+
+    return this.provider.generateStreamingResponse(messages, onToken);
   }
 
   private getRelevantExamples(_userMessage: string): Message[] {
@@ -101,11 +114,11 @@ export class AiService {
       for (const msg of conv.messages) {
         examples.push({
           role: msg.authorId === this.pageId ? 'assistant' : 'user',
-          content: msg.content
+          content: msg.content,
         });
       }
     }
 
     return examples;
   }
-} 
+}

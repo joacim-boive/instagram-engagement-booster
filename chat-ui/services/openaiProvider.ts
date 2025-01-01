@@ -28,4 +28,32 @@ export class OpenAiProvider implements AiProvider {
       throw new Error('Failed to generate response from OpenAI');
     }
   }
+
+  async generateStreamingResponse(
+    messages: Message[],
+    onToken: (token: string) => void
+  ): Promise<void> {
+    try {
+      const stream = await this.client.chat.completions.create({
+        model: this.model,
+        messages: messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        temperature: 0.7,
+        max_tokens: 150,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          onToken(content);
+        }
+      }
+    } catch (error) {
+      console.error('OpenAI streaming error:', error);
+      throw new Error('Failed to generate streaming response from OpenAI');
+    }
+  }
 } 

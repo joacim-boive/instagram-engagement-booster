@@ -34,4 +34,33 @@ export class AnthropicProvider implements AiProvider {
       throw new Error('Failed to generate response from Anthropic');
     }
   }
+
+  async generateStreamingResponse(
+    messages: Message[],
+    onToken: (token: string) => void
+  ): Promise<void> {
+    try {
+      const formattedMessages = messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
+        content: msg.content
+      }));
+
+      const stream = await this.client.messages.create({
+        model: this.model,
+        messages: formattedMessages,
+        max_tokens: 150,
+        temperature: 0.7,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text') {
+          onToken(chunk.delta.text);
+        }
+      }
+    } catch (error) {
+      console.error('Anthropic streaming error:', error);
+      throw new Error('Failed to generate streaming response from Anthropic');
+    }
+  }
 } 

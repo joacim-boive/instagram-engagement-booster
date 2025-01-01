@@ -12,6 +12,10 @@ export type AiConfig = {
 
 export interface AiProvider {
   generateResponse(messages: Message[]): Promise<string>;
+  generateStreamingResponse(
+    messages: Message[],
+    onToken: (token: string) => void
+  ): Promise<void>;
 }
 
 export type ProviderConfig = {

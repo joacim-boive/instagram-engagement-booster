@@ -31,24 +31,64 @@ export default function ChatPage() {
     setInput('');
     setIsLoading(true);
 
+    // Create a placeholder for the assistant's message
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({ message: input }),
       });
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader available');
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-      };
+      // Read the stream
+      let accumulatedContent = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      setMessages(prev => [...prev, assistantMessage]);
+        // Decode the chunk
+        const text = new TextDecoder().decode(value);
+
+        // Split the text into lines and process each complete line
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          try {
+            const data = JSON.parse(line);
+            accumulatedContent += data.token;
+            // Update the last message with the accumulated content
+            setMessages(prev => {
+              const newMessages = [...prev];
+              const lastMessage = newMessages[newMessages.length - 1];
+              lastMessage.content = accumulatedContent;
+              return newMessages;
+            });
+          } catch (e) {
+            console.warn('Failed to parse line:', line, e);
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to get response:', error);
+      // Update the last message to show the error
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        lastMessage.content = 'Error: Failed to generate response';
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -56,8 +96,10 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Instagram Engagement Assistant</h1>
-      
+      <h1 className="text-2xl font-bold mb-4">
+        Instagram Engagement Assistant
+      </h1>
+
       <Card className="flex-grow mb-4">
         <ScrollArea className="h-[600px] p-4">
           {messages.map((message, index) => (
@@ -82,9 +124,7 @@ export default function ChatPage() {
             </div>
           ))}
           {isLoading && (
-            <div className="text-muted-foreground text-center">
-              Thinking...
-            </div>
+            <div className="text-muted-foreground text-center">Thinking...</div>
           )}
         </ScrollArea>
       </Card>
@@ -92,7 +132,7 @@ export default function ChatPage() {
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
           placeholder="Type your message..."
           disabled={isLoading}
           className="flex-grow"
@@ -103,4 +143,4 @@ export default function ChatPage() {
       </form>
     </div>
   );
-} 
+}
