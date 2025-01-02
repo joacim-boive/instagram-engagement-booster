@@ -20,11 +20,11 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/server/*": ["./server/*"],
       "@/services/*": ["./services/*"],
       "@/scripts/*": ["./src/scripts/*"],
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"]
-
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

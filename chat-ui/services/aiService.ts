@@ -39,7 +39,7 @@ export class AiService {
       throw new Error('No valid AI provider configuration found');
     }
 
-    this.vectorService = new VectorService();
+    this.vectorService = new VectorService(this.trainingData);
     void this.initializeVectorStore();
   }
 
@@ -142,5 +142,15 @@ export class AiService {
       console.error('Error getting relevant examples:', error);
       return [];
     }
+  }
+
+  public getStats() {
+    return {
+      isInitialized: this.isInitialized,
+      isInitializing: this.isInitializing,
+      systemPromptLength: this.systemPrompt.length,
+      trainingDataCount: this.trainingData.length,
+      vectorStats: this.vectorService.getStats(),
+    };
   }
 }

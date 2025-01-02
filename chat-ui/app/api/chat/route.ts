@@ -1,24 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AiService } from '@/services/aiService';
-import { ProviderConfig } from '@/services/ai/types';
-import { env } from '../../config/env';
-
-// Configure AI provider based on environment variables
-const config: ProviderConfig = {};
-
-if (env.openaiApiKey) {
-  config.openai = {
-    apiKey: env.openaiApiKey,
-    model: env.openaiModel,
-  };
-} else if (env.anthropicApiKey) {
-  config.anthropic = {
-    apiKey: env.anthropicApiKey,
-    model: env.anthropicModel,
-  };
-}
-
-const aiService = new AiService(config);
+import { getAiService } from '@/lib/singleton';
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
@@ -32,6 +13,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const aiService = getAiService();
 
     // Create a TransformStream for streaming the response
     const stream = new TransformStream();

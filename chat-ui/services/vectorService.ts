@@ -24,15 +24,23 @@ const VECTOR_CONFIG = {
 export class VectorService {
   private vectorStore: MemoryVectorStore | null = null;
   private embeddings: OpenAIEmbeddings;
-  private conversationMap: Map<string, Conversation> = new Map();
+  private conversationMap: Map<string, Conversation>;
   private initialized = false;
 
-  constructor() {
+  constructor(conversations?: Conversation[]) {
     this.embeddings = new OpenAIEmbeddings({
       openAIApiKey: env.openaiApiKey,
       modelName: VECTOR_CONFIG.EMBEDDING_MODEL,
       stripNewLines: VECTOR_CONFIG.STRIP_NEWLINES,
     });
+
+    // Initialize the conversation map
+    this.conversationMap = new Map();
+    if (conversations) {
+      conversations.forEach(conv => {
+        this.conversationMap.set(conv.commentId, conv);
+      });
+    }
   }
 
   async initializeFromConversations(conversations: Conversation[]) {
@@ -172,7 +180,10 @@ export class VectorService {
     scoreThreshold = VECTOR_CONFIG.DEFAULT_SCORE_THRESHOLD
   ): Promise<Array<{ conversation: Conversation; score: number }>> {
     if (!this.initialized || !this.vectorStore) {
-      throw new Error('Vector store not initialized');
+      console.log('[VectorService] Auto-initializing vector store...');
+      await this.initializeFromConversations(
+        Array.from(this.conversationMap.values())
+      );
     }
 
     console.log(`[VectorService] Searching for: "${query}"`);
@@ -182,7 +193,7 @@ export class VectorService {
     console.time('similarity-search');
 
     try {
-      const results = await this.vectorStore.similaritySearchWithScore(
+      const results = await this.vectorStore!.similaritySearchWithScore(
         query,
         limit
       );
@@ -191,7 +202,11 @@ export class VectorService {
       results.forEach(([doc, score], index) => {
         console.log(`\n[VectorService] Raw Match ${index + 1}:`);
         console.log(
-          `Score: ${score.toFixed(3)} ${score >= scoreThreshold ? '(✓ above threshold)' : '(✗ below threshold: ${scoreThreshold})'}`
+          `Score: ${score.toFixed(3)} ${
+            score >= scoreThreshold
+              ? '(✓ above threshold)'
+              : '(✗ below threshold)'
+          }`
         );
         console.log(
           `Content: ${doc.pageContent.slice(0, VECTOR_CONFIG.PREVIEW_LENGTH)}...`
