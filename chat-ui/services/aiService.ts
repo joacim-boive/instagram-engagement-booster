@@ -130,7 +130,7 @@ export class AiService {
       }
 
       const similarConversations =
-        await this.vectorService.findSimilarConversations(userMessage, 2, 0.7);
+        await this.vectorService.findSimilarConversations(userMessage);
 
       return similarConversations.flatMap(({ conversation }) =>
         conversation.messages.map(msg => ({

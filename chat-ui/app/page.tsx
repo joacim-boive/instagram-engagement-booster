@@ -53,7 +53,7 @@ export default function ChatPage() {
       if (!reader) throw new Error('No reader available');
 
       // Read the stream
-      let accumulatedContent = '';
+      let fullContent = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -67,12 +67,12 @@ export default function ChatPage() {
           if (line.trim() === '') continue;
           try {
             const data = JSON.parse(line);
-            accumulatedContent += data.token;
-            // Update the last message with the accumulated content
+            fullContent += data.token;
+            // Update the last message with the complete content
             setMessages(prev => {
               const newMessages = [...prev];
               const lastMessage = newMessages[newMessages.length - 1];
-              lastMessage.content = accumulatedContent;
+              lastMessage.content = fullContent;
               return newMessages;
             });
           } catch (e) {
