@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { AiProvider, Message } from './ai/types';
+import { AI_CONFIG } from './ai/constants';
 
 export class OpenAiProvider implements AiProvider {
   private client: OpenAI;
@@ -16,10 +17,10 @@ export class OpenAiProvider implements AiProvider {
         model: this.model,
         messages: messages.map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         })),
-        temperature: 0.7,
-        max_tokens: 150
+        temperature: AI_CONFIG.OPENAI.TEMPERATURE,
+        max_tokens: AI_CONFIG.OPENAI.MAX_TOKENS,
       });
 
       return completion.choices[0]?.message?.content || 'No response generated';
@@ -38,11 +39,11 @@ export class OpenAiProvider implements AiProvider {
         model: this.model,
         messages: messages.map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         })),
-        temperature: 0.7,
-        max_tokens: 150,
-        stream: true
+        temperature: AI_CONFIG.OPENAI.TEMPERATURE,
+        max_tokens: AI_CONFIG.OPENAI.MAX_TOKENS,
+        stream: true,
       });
 
       for await (const chunk of stream) {
@@ -56,4 +57,4 @@ export class OpenAiProvider implements AiProvider {
       throw new Error('Failed to generate streaming response from OpenAI');
     }
   }
-} 
+}

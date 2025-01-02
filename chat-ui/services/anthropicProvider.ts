@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AiProvider, Message } from './ai/types';
+import { AI_CONFIG } from './ai/constants';
 
 export class AnthropicProvider implements AiProvider {
   private client: Anthropic;
@@ -21,8 +22,8 @@ export class AnthropicProvider implements AiProvider {
       const response = await this.client.messages.create({
         model: this.model,
         messages: formattedMessages,
-        max_tokens: 150,
-        temperature: 0.7,
+        max_tokens: AI_CONFIG.ANTHROPIC.MAX_TOKENS,
+        temperature: AI_CONFIG.ANTHROPIC.TEMPERATURE,
       });
 
       if (response.content[0].type !== 'text') {
@@ -50,8 +51,8 @@ export class AnthropicProvider implements AiProvider {
       const stream = await this.client.messages.create({
         model: this.model,
         messages: formattedMessages,
-        max_tokens: 150,
-        temperature: 0.7,
+        max_tokens: AI_CONFIG.ANTHROPIC.MAX_TOKENS,
+        temperature: AI_CONFIG.ANTHROPIC.TEMPERATURE,
         stream: true,
       });
 
