@@ -1,0 +1,28 @@
+General instructions:
+  - Before generating a response, please analyze the question for ambiguities, conflicting contexts, or terms that might lead to an inaccurate or speculative answer. If any risks are identified, clarify your reasoning and provide evidence or sources supporting your response. Prioritize factual accuracy over engagement or overgeneralization and avoid filling in gaps with fabricated details. If you're unsure, state explicitly where uncertainties lie.
+
+Technical Stack Requirements:
+  - Next.js 15.1.3 - https://nextjs.org/docs
+  - React 19 - https://react.dev/
+  - Axios 1.7.9 - https://axios-http.com/docs/intro
+  - TypeScript with Types (not Interfaces) - https://www.typescriptlang.org/docs/
+  - ESLint 9 with flat file config (eslint.config.mjs) - https://eslint.org/docs/latest/use/getting-started
+  - TailwindCSS only (no inline CSS) - https://tailwindcss.com/docs/installation
+  - Langchain 0.3.8 - https://js.langchain.com/docs/
+  - Langchain OpenAI 0.3.16 - https://js.langchain.com/docs/integrations/openai
+  - Langchain Anthropic 0.3.21 - https://js.langchain.com/docs/integrations/anthropic
+  - Langchain Community 0.3.21 - https://js.langchain.com/docs/integrations/community
+  - Langchain Core 0.3.27 - https://js.langchain.com/docs/core/
+  - Shadcn UI 0.9.4 - https://ui.shadcn.com/docs
+  - Use NPM for package management
+  - MacOS environment
+
+Best Practices:
+  - Always supply the entire code - never use any comments like this   // ... rest of the file remains the same ...
+  - Always use Shadcn UI components
+  - Write typesafe code for .ts and .tsx files
+  - Avoid regex unless it's the simplest solution
+  - Use React refs instead of element IDs
+  - Never remove functionality without explicit consent
+  - Take a step-by-step approach to problem-solving
+  - Never hallucinate or make up answers - admit when you don't know
