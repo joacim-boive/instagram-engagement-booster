@@ -24,6 +24,7 @@
       "@/services/*": ["./services/*"],
       "@/scripts/*": ["./src/scripts/*"],
       "@/components/*": ["./components/*"],
+      "@/contexts/*": ["./contexts/*"],
       "@/lib/*": ["./lib/*"]
     }
   },

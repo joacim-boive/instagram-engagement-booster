@@ -43,6 +43,24 @@ export class AiService {
     void this.initializeVectorStore();
   }
 
+  public updateConfig(config: ProviderConfig, systemPrompt?: string) {
+    if (systemPrompt) {
+      this.systemPrompt = systemPrompt;
+    }
+
+    if (config.openai?.apiKey) {
+      this.provider = new OpenAiProvider(
+        config.openai.apiKey,
+        config.openai.model
+      );
+    } else if (config.anthropic?.apiKey) {
+      this.provider = new AnthropicProvider(
+        config.anthropic.apiKey,
+        config.anthropic.model
+      );
+    }
+  }
+
   private loadFile<T>(path: string, parser?: (data: string) => T): T | string {
     try {
       const filePath = join(process.cwd(), path);

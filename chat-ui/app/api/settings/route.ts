@@ -1,29 +1,34 @@
-import { NextResponse } from 'next/server';
-import { SettingsService } from '@/services/settingsService';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-
-const settingsService = new SettingsService();
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  getUserSettings,
+  createUserSettings,
+  updateUserSettings,
+  deleteUserSettings,
+} from '@/services/settingsService';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const settings = await getUserSettings();
+    return NextResponse.json(settings);
+  } catch (error) {
+    console.error('Failed to get settings:', error);
+    return NextResponse.json(
+      { error: 'Failed to get settings' },
+      { status: 500 }
+    );
   }
-
-  const settings = settingsService.listSettings();
-  return NextResponse.json(settings);
 }
 
-export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const { name } = await request.json();
-    const settings = settingsService.createSettings(name);
+    const body = await request.json();
+    const { name } = body;
+
+    if (!name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    const settings = await createUserSettings(name);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to create settings:', error);
@@ -34,15 +39,19 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function PUT(request: NextRequest) {
   try {
-    const { id, updates } = await request.json();
-    const settings = settingsService.updateSettings(id, updates);
+    const body = await request.json();
+    const { id, updates } = body;
+
+    if (!id || !updates) {
+      return NextResponse.json(
+        { error: 'ID and updates are required' },
+        { status: 400 }
+      );
+    }
+
+    const settings = await updateUserSettings(id, updates);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to update settings:', error);
@@ -53,16 +62,17 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await request.json();
-    const success = settingsService.deleteSettings(id);
-    return NextResponse.json({ success });
+    const body = await request.json();
+    const { id } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    await deleteUserSettings(id);
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete settings:', error);
     return NextResponse.json(

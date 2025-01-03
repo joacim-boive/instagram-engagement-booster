@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -15,11 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { UserSettings } from '@/services/ai/types';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import type { UserSettings } from '@/services/settingsService';
 
 export default function SettingsPage() {
-  const { isLoaded, userId, isSignedIn } = useAuth();
-  const router = useRouter();
   const [settings, setSettings] = useState<UserSettings[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
   const [isEditing, setIsEditing] = useState(false);
@@ -27,34 +24,26 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push('/auth/signin');
-    }
-  }, [isLoaded, isSignedIn, router]);
+    fetchSettings();
+  }, []);
 
-  useEffect(() => {
-    if (userId) {
-      const fetchSettings = async () => {
-        try {
-          setIsLoading(true);
-          const response = await fetch('/api/settings');
-          if (!response.ok) throw new Error('Failed to fetch settings');
-          const data = await response.json();
-          setSettings(data);
-          if (data.length > 0 && !selectedId) {
-            setSelectedId(data[0].id);
-            setEditForm(data[0]);
-          }
-        } catch (error) {
-          console.error('Error fetching settings:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchSettings();
+  const fetchSettings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/settings');
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const data = await response.json();
+      setSettings(data);
+      if (data.length > 0 && !selectedId) {
+        setSelectedId(data[0].id);
+        setEditForm(data[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [userId, selectedId]);
+  };
 
   const handleCreateSettings = async () => {
     try {
@@ -130,196 +119,200 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <Card className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Settings</h1>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+          <CardTitle className="text-2xl font-bold">Settings</CardTitle>
           <Button onClick={handleCreateSettings} disabled={isLoading}>
             Create New
           </Button>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Settings List */}
+            <div className="space-y-4">
+              <Label>Configurations</Label>
+              <Select
+                value={selectedId}
+                onValueChange={value => {
+                  setSelectedId(value);
+                  setEditForm(settings.find(s => s.id === value) || {});
+                  setIsEditing(false);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select configuration" />
+                </SelectTrigger>
+                <SelectContent>
+                  {settings.map(setting => (
+                    <SelectItem key={setting.id} value={setting.id}>
+                      {setting.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Settings List */}
-          <div className="space-y-4">
-            <Label>Configurations</Label>
-            <Select
-              value={selectedId}
-              onValueChange={value => {
-                setSelectedId(value);
-                setEditForm(settings.find(s => s.id === value) || {});
-                setIsEditing(false);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select configuration" />
-              </SelectTrigger>
-              <SelectContent>
-                {settings.map(setting => (
-                  <SelectItem key={setting.id} value={setting.id}>
-                    {setting.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Settings Form */}
+            <div className="md:col-span-3 space-y-6">
+              {selectedSettings && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input
+                      value={editForm.name || ''}
+                      onChange={e =>
+                        setEditForm(prev => ({ ...prev, name: e.target.value }))
+                      }
+                      disabled={!isEditing || isLoading}
+                    />
+                  </div>
 
-          {/* Settings Form */}
-          <div className="md:col-span-3 space-y-6">
-            {selectedSettings && (
-              <>
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input
-                    value={editForm.name || ''}
-                    onChange={e =>
-                      setEditForm(prev => ({ ...prev, name: e.target.value }))
-                    }
-                    disabled={!isEditing || isLoading}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label>System Prompt</Label>
+                    <Textarea
+                      value={editForm.systemPrompt || ''}
+                      onChange={e =>
+                        setEditForm(prev => ({
+                          ...prev,
+                          systemPrompt: e.target.value,
+                        }))
+                      }
+                      disabled={!isEditing || isLoading}
+                      rows={5}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>System Prompt</Label>
-                  <Textarea
-                    value={editForm.systemPrompt || ''}
-                    onChange={e =>
-                      setEditForm(prev => ({
-                        ...prev,
-                        systemPrompt: e.target.value,
-                      }))
-                    }
-                    disabled={!isEditing || isLoading}
-                    rows={5}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label>AI Provider</Label>
+                    <Select
+                      value={editForm.aiProvider}
+                      onValueChange={value =>
+                        setEditForm(prev => ({
+                          ...prev,
+                          aiProvider: value as 'openai' | 'anthropic',
+                        }))
+                      }
+                      disabled={!isEditing || isLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="anthropic">Anthropic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>AI Provider</Label>
-                  <Select
-                    value={editForm.aiProvider}
-                    onValueChange={value =>
-                      setEditForm(prev => ({
-                        ...prev,
-                        aiProvider: value as 'openai' | 'anthropic',
-                      }))
-                    }
-                    disabled={!isEditing || isLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="anthropic">Anthropic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {editForm.aiProvider === 'openai' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>OpenAI API Key</Label>
-                      <Input
-                        type="password"
-                        value={editForm.openaiApiKey || ''}
-                        onChange={e =>
-                          setEditForm(prev => ({
-                            ...prev,
-                            openaiApiKey: e.target.value,
-                          }))
-                        }
-                        disabled={!isEditing || isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>OpenAI Model</Label>
-                      <Input
-                        value={editForm.openaiModel || ''}
-                        onChange={e =>
-                          setEditForm(prev => ({
-                            ...prev,
-                            openaiModel: e.target.value,
-                          }))
-                        }
-                        disabled={!isEditing || isLoading}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {editForm.aiProvider === 'anthropic' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Anthropic API Key</Label>
-                      <Input
-                        type="password"
-                        value={editForm.anthropicApiKey || ''}
-                        onChange={e =>
-                          setEditForm(prev => ({
-                            ...prev,
-                            anthropicApiKey: e.target.value,
-                          }))
-                        }
-                        disabled={!isEditing || isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Anthropic Model</Label>
-                      <Input
-                        value={editForm.anthropicModel || ''}
-                        onChange={e =>
-                          setEditForm(prev => ({
-                            ...prev,
-                            anthropicModel: e.target.value,
-                          }))
-                        }
-                        disabled={!isEditing || isLoading}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="flex justify-end gap-2 pt-4">
-                  {isEditing ? (
+                  {editForm.aiProvider === 'openai' && (
                     <>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setEditForm(selectedSettings);
-                          setIsEditing(false);
-                        }}
-                        disabled={isLoading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleUpdateSettings}
-                        disabled={isLoading}
-                      >
-                        Save
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={handleDeleteSettings}
-                        disabled={isLoading}
-                      >
-                        Delete
-                      </Button>
-                      <Button
-                        onClick={() => setIsEditing(true)}
-                        disabled={isLoading}
-                      >
-                        Edit
-                      </Button>
+                      <div className="space-y-2">
+                        <Label>OpenAI API Key</Label>
+                        <Input
+                          type="password"
+                          value={editForm.openaiApiKey || ''}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              openaiApiKey: e.target.value,
+                            }))
+                          }
+                          disabled={!isEditing || isLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>OpenAI Model</Label>
+                        <Input
+                          value={editForm.openaiModel || ''}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              openaiModel: e.target.value,
+                            }))
+                          }
+                          disabled={!isEditing || isLoading}
+                        />
+                      </div>
                     </>
                   )}
-                </div>
-              </>
-            )}
+
+                  {editForm.aiProvider === 'anthropic' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Anthropic API Key</Label>
+                        <Input
+                          type="password"
+                          value={editForm.anthropicApiKey || ''}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              anthropicApiKey: e.target.value,
+                            }))
+                          }
+                          disabled={!isEditing || isLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Anthropic Model</Label>
+                        <Input
+                          value={editForm.anthropicModel || ''}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              anthropicModel: e.target.value,
+                            }))
+                          }
+                          disabled={!isEditing || isLoading}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    {isEditing ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditForm(selectedSettings);
+                            setIsEditing(false);
+                          }}
+                          disabled={isLoading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleUpdateSettings}
+                          disabled={isLoading}
+                        >
+                          {isLoading && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Save
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleDeleteSettings}
+                          disabled={isLoading}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          onClick={() => setIsEditing(true)}
+                          disabled={isLoading}
+                        >
+                          Edit
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

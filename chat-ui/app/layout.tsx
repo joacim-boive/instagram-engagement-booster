@@ -1,4 +1,5 @@
 import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -21,12 +22,14 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <div className="min-h-screen pt-16">
-            <header className="fixed top-0 right-0 p-4">
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            </header>
-            <main>{children}</main>
+            <SettingsProvider>
+              <header className="fixed top-0 right-0 p-4">
+                <SignedIn>
+                  <UserButton />
+                </SignedIn>
+              </header>
+              <main>{children}</main>
+            </SettingsProvider>
           </div>
         </body>
       </html>

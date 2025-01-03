@@ -1,91 +1,149 @@
-import { UserSettings } from './ai/types';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
+import { auth } from '@clerk/nextjs/server';
 
-export class SettingsService {
-  private settingsPath: string;
-  private settings: Map<string, UserSettings> = new Map();
+export type UserSettings = {
+  id: string;
+  userId: string;
+  name: string;
+  systemPrompt?: string;
+  aiProvider: 'openai' | 'anthropic';
+  openaiApiKey?: string;
+  openaiModel?: string;
+  anthropicApiKey?: string;
+  anthropicModel?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-  constructor() {
-    this.settingsPath = join(process.cwd(), 'user-settings.json');
-    this.loadSettings();
+const SETTINGS_DIR = path.join(process.cwd(), 'data', 'settings');
+
+// Ensure settings directory exists
+async function ensureSettingsDir() {
+  try {
+    await fs.mkdir(SETTINGS_DIR, { recursive: true });
+  } catch (error) {
+    console.error('Failed to create settings directory:', error);
+    throw error;
   }
+}
 
-  private loadSettings() {
+// Get the file path for a user's settings
+function getUserSettingsPath(userId: string) {
+  return path.join(SETTINGS_DIR, `${userId}.json`);
+}
+
+export async function getUserSettings(): Promise<UserSettings[]> {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Not authenticated');
+
+  await ensureSettingsDir();
+  const filePath = getUserSettingsPath(userId);
+
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const settings = JSON.parse(fileContent);
+    return Array.isArray(settings) ? settings : [];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function createUserSettings(name: string): Promise<UserSettings> {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Not authenticated');
+
+  await ensureSettingsDir();
+  const filePath = getUserSettingsPath(userId);
+
+  const newSettings: UserSettings = {
+    id: crypto.randomUUID(),
+    userId,
+    name,
+    aiProvider: 'openai',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  try {
+    let settings: UserSettings[] = [];
     try {
-      const data = readFileSync(this.settingsPath, 'utf-8');
-      const settingsArray = JSON.parse(data) as UserSettings[];
-      this.settings = new Map(settingsArray.map(s => [s.id, s]));
+      const fileContent = await fs.readFile(filePath, 'utf-8');
+      settings = JSON.parse(fileContent);
     } catch (error) {
-      console.warn('No existing settings found, starting fresh');
-      console.error(error);
-    }
-  }
-
-  private saveSettings() {
-    const settingsArray = Array.from(this.settings.values());
-    writeFileSync(this.settingsPath, JSON.stringify(settingsArray, null, 2));
-  }
-
-  createSettings(name: string): UserSettings {
-    const defaultSettings: UserSettings = {
-      id: uuidv4(),
-      name,
-      systemPrompt: readFileSync(
-        join(process.cwd(), 'prompts/system-prompt.txt'),
-        'utf-8'
-      ),
-      aiProvider: 'openai',
-      vectorConfig: {
-        batchSize: 100,
-        embeddingModel: 'text-embedding-3-small',
-        relevantExamplesCount: 2,
-        relevantExamplesMinScore: 0.7,
-      },
-      aiConfig: {
-        temperature: 0.7,
-        maxTokens: 150,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    this.settings.set(defaultSettings.id, defaultSettings);
-    this.saveSettings();
-    return defaultSettings;
-  }
-
-  getSettings(id: string): UserSettings | undefined {
-    return this.settings.get(id);
-  }
-
-  updateSettings(id: string, updates: Partial<UserSettings>): UserSettings {
-    const current = this.settings.get(id);
-    if (!current) {
-      throw new Error('Settings not found');
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
 
-    const updated = {
-      ...current,
+    settings.push(newSettings);
+    await fs.writeFile(filePath, JSON.stringify(settings, null, 2));
+    return newSettings;
+  } catch (error) {
+    console.error('Failed to create settings:', error);
+    throw error;
+  }
+}
+
+export async function updateUserSettings(
+  id: string,
+  updates: Partial<UserSettings>
+): Promise<UserSettings> {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Not authenticated');
+
+  const filePath = getUserSettingsPath(userId);
+
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const settings: UserSettings[] = JSON.parse(fileContent);
+
+    const settingIndex = settings.findIndex(s => s.id === id);
+    if (settingIndex === -1) throw new Error('Settings not found');
+
+    // Validate that these settings belong to the current user
+    if (settings[settingIndex].userId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    // Update the settings
+    settings[settingIndex] = {
+      ...settings[settingIndex],
       ...updates,
       updatedAt: new Date(),
     };
 
-    this.settings.set(id, updated);
-    this.saveSettings();
-    return updated;
+    await fs.writeFile(filePath, JSON.stringify(settings, null, 2));
+    return settings[settingIndex];
+  } catch (error) {
+    console.error('Failed to update settings:', error);
+    throw error;
   }
+}
 
-  deleteSettings(id: string): boolean {
-    const deleted = this.settings.delete(id);
-    if (deleted) {
-      this.saveSettings();
+export async function deleteUserSettings(id: string): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Not authenticated');
+
+  const filePath = getUserSettingsPath(userId);
+
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    let settings: UserSettings[] = JSON.parse(fileContent);
+
+    const settingIndex = settings.findIndex(s => s.id === id);
+    if (settingIndex === -1) throw new Error('Settings not found');
+
+    // Validate that these settings belong to the current user
+    if (settings[settingIndex].userId !== userId) {
+      throw new Error('Unauthorized');
     }
-    return deleted;
-  }
 
-  listSettings(): UserSettings[] {
-    return Array.from(this.settings.values());
+    settings = settings.filter(s => s.id !== id);
+    await fs.writeFile(filePath, JSON.stringify(settings, null, 2));
+  } catch (error) {
+    console.error('Failed to delete settings:', error);
+    throw error;
   }
 }

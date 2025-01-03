@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getAiService } from '@/lib/singleton';
+import { auth } from '@clerk/nextjs/server';
+import { getUserSettings } from '@/services/settingsService';
+import { env } from '../../config/env';
+import type { ProviderConfig } from '@/services/ai/types';
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
 
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
     const { message } = await request.json();
 
     if (!message) {
@@ -14,7 +23,49 @@ export async function POST(request: Request) {
       );
     }
 
-    const aiService = getAiService();
+    // Get user settings and AI service
+    const [userSettings, aiService] = await Promise.all([
+      getUserSettings(),
+      getAiService(),
+    ]);
+
+    // Configure the service with user settings if available
+    if (userSettings[0]) {
+      const settings = userSettings[0];
+      const config: ProviderConfig = {
+        openai:
+          settings.aiProvider === 'openai' &&
+          (settings.openaiApiKey || env.openaiApiKey)
+            ? {
+                apiKey: (settings.openaiApiKey || env.openaiApiKey)!,
+                model: settings.openaiModel || env.openaiModel,
+              }
+            : undefined,
+        anthropic:
+          settings.aiProvider === 'anthropic' &&
+          (settings.anthropicApiKey || env.anthropicApiKey)
+            ? {
+                apiKey: (settings.anthropicApiKey || env.anthropicApiKey)!,
+                model: settings.anthropicModel || env.anthropicModel,
+              }
+            : undefined,
+      };
+
+      aiService.updateConfig(config, settings.systemPrompt);
+
+      console.log('Applied user configuration:', {
+        provider: settings.aiProvider,
+        model:
+          settings.aiProvider === 'openai'
+            ? settings.openaiModel || env.openaiModel
+            : settings.anthropicModel || env.anthropicModel,
+        usingCustomKey:
+          settings.aiProvider === 'openai'
+            ? !!settings.openaiApiKey
+            : !!settings.anthropicApiKey,
+        systemPrompt: settings.systemPrompt || 'using default system prompt',
+      });
+    }
 
     // Create a TransformStream for streaming the response
     const stream = new TransformStream();
