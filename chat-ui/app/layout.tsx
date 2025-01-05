@@ -18,14 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider signInForceRedirectUrl={'/chat'}>
+    <ClerkProvider signInForceRedirectUrl="/chat">
       <html lang="en">
         <body className={inter.className}>
           <div className="min-h-screen pt-16">
             <SettingsProvider>
               <header className="fixed top-0 right-0 p-4">
                 <SignedIn>
-                  <UserButton />
+                  <UserButton afterSignOutUrl="/" />
                 </SignedIn>
               </header>
               <main>{children}</main>

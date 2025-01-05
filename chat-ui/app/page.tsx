@@ -1,6 +1,7 @@
 'use client';
 
-import { SignInButton } from '@clerk/nextjs';
+import Link from 'next/link';
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import { ArrowRight, MessageSquare, Sparkles, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,11 +23,20 @@ export default function LandingPage() {
           Boost your Instagram presence with AI-powered engagement strategies
           and content optimization
         </p>
-        <SignInButton mode="modal">
-          <Button size="lg" className="gap-2">
-            Get Started <ArrowRight className="h-4 w-4" />
-          </Button>
-        </SignInButton>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <Button size="lg" className="gap-2">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Button>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <Link href="/chat">
+            <Button size="lg" className="gap-2">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </SignedIn>
       </section>
 
       {/* Features Section */}
