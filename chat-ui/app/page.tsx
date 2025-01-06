@@ -1,146 +1,92 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { ArrowRight, MessageSquare, Sparkles, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
-type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-};
-
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    // Create a placeholder for the assistant's message
-    const assistantMessage: Message = {
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, assistantMessage]);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
-        body: JSON.stringify({ message: input }),
-      });
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
-
-      // Read the stream
-      let fullContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // Decode the chunk
-        const text = new TextDecoder().decode(value);
-
-        // Split the text into lines and process each complete line
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.trim() === '') continue;
-          try {
-            const data = JSON.parse(line);
-            fullContent += data.token;
-            // Update the last message with the complete content
-            setMessages(prev => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              lastMessage.content = fullContent;
-              return newMessages;
-            });
-          } catch (e) {
-            console.warn('Failed to parse line:', line, e);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get response:', error);
-      // Update the last message to show the error
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        lastMessage.content = 'Error: Failed to generate response';
-        return newMessages;
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+export default function LandingPage() {
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">
-        Instagram Engagement Assistant
-      </h1>
+    <div className="flex flex-col min-h-screen">
+      {/* Hero Section */}
+      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16 bg-gradient-to-b from-background to-muted">
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-4">
+          Instagram Engagement Assistant
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-[600px] mb-8">
+          Boost your Instagram presence with AI-powered engagement strategies
+          and content optimization
+        </p>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <Button size="lg" className="gap-2">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Button>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <Link href="/chat">
+            <Button size="lg" className="gap-2">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </SignedIn>
+      </section>
 
-      <Card className="flex-grow mb-4">
-        <ScrollArea className="h-[600px] p-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`mb-4 ${
-                message.role === 'user' ? 'text-right' : 'text-left'
-              }`}
-            >
-              <div
-                className={`inline-block p-3 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground ml-auto'
-                    : 'bg-muted'
-                }`}
-              >
-                {message.content}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {message.timestamp.toLocaleTimeString()}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="text-muted-foreground text-center">Thinking...</div>
-          )}
-        </ScrollArea>
-      </Card>
+      {/* Features Section */}
+      <section className="py-16 px-6">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Supercharge Your Instagram Strategy
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <Sparkles className="h-12 w-12 mb-4 text-primary" />
+                <CardTitle>AI-Powered Insights</CardTitle>
+                <CardDescription>
+                  Get intelligent recommendations for content optimization and
+                  posting strategies
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={isLoading}
-          className="flex-grow"
-        />
-        <Button type="submit" disabled={isLoading}>
-          Send
-        </Button>
-      </form>
+            <Card>
+              <CardHeader>
+                <MessageSquare className="h-12 w-12 mb-4 text-primary" />
+                <CardTitle>Engagement Analysis</CardTitle>
+                <CardDescription>
+                  Understand your audience better with detailed engagement
+                  metrics and trends
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <Target className="h-12 w-12 mb-4 text-primary" />
+                <CardTitle>Strategic Planning</CardTitle>
+                <CardDescription>
+                  Plan and schedule your content for maximum impact and reach
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-6 px-6">
+        <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
+          © 2024 Instagram Engagement Assistant. All rights reserved.
+        </div>
+      </footer>
     </div>
   );
 }

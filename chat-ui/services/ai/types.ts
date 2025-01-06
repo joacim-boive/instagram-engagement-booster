@@ -41,3 +41,26 @@ export type ProviderConfig = {
     model: string;
   };
 };
+
+export type UserSettings = {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  aiProvider: 'openai' | 'anthropic';
+  openaiApiKey?: string;
+  openaiModel?: string;
+  anthropicApiKey?: string;
+  anthropicModel?: string;
+  vectorConfig: {
+    batchSize: number;
+    embeddingModel: string;
+    relevantExamplesCount: number;
+    relevantExamplesMinScore: number;
+  };
+  aiConfig: {
+    temperature: number;
+    maxTokens: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+};

@@ -1,3 +1,6 @@
+import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
+import { SettingsProvider } from '@/contexts/SettingsContext';
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -15,8 +18,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
+    <ClerkProvider signInForceRedirectUrl="/chat">
+      <html lang="en">
+        <body className={inter.className}>
+          <div className="min-h-screen pt-16">
+            <SettingsProvider>
+              <header className="fixed top-0 right-0 p-4">
+                <SignedIn>
+                  <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+              </header>
+              <main>{children}</main>
+            </SettingsProvider>
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
   );
-} 
+}

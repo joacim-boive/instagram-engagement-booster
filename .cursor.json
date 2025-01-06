@@ -1,0 +1,6 @@
+{
+  "project": {
+    "rootPath": "./chat-ui",
+    "sourceRoot": "./chat-ui/app"
+  }
+}
