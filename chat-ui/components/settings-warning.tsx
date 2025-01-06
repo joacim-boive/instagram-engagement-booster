@@ -12,7 +12,10 @@ export function SettingsWarning({ onOpenSettings }: SettingsWarningProps) {
     <Alert variant="destructive">
       <AlertTitle>Missing Required Settings</AlertTitle>
       <AlertDescription className="flex items-center justify-between">
-        <span>Please configure your Facebook Page ID in settings</span>
+        <span>
+          Please configure your Facebook Page ID and Personal Details in
+          settings
+        </span>
         <Button variant="destructive" size="sm" onClick={onOpenSettings}>
           Configure Settings
         </Button>

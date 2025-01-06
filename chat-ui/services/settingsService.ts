@@ -7,7 +7,7 @@ export type UserSettings = {
   userId: string;
   name: string;
   facebookPageId?: string;
-  systemPrompt?: string;
+  userPrompt: string;
   aiProvider: 'openai' | 'anthropic';
   openaiApiKey?: string;
   openaiModel?: string;
@@ -72,6 +72,7 @@ export async function createUserSettings(
     userId,
     name,
     aiProvider: additionalSettings.aiProvider || 'openai',
+    userPrompt: additionalSettings.userPrompt || '',
     createdAt: new Date(),
     updatedAt: new Date(),
     ...additionalSettings,

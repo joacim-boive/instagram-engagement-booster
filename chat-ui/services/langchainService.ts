@@ -35,35 +35,29 @@ export class LangChainService {
   constructor(settings?: UserSettings | null) {
     console.log('LangChain: Constructing service with settings:', settings);
 
-    // Load system prompt with priority:
-    // 1. From settings (settings-form.tsx)
-    // 2. From system-prompt.txt
-    // 3. Fail with error
-    if (settings?.systemPrompt) {
-      console.log(
-        'LangChain: Using system prompt from settings:',
-        settings.systemPrompt
+    // Load system prompt from system-prompt.txt
+    try {
+      const systemPromptPath = join(
+        process.cwd(),
+        'prompts',
+        'system-prompt.txt'
       );
-      this.systemPrompt = settings.systemPrompt;
-    } else {
-      try {
-        const systemPromptPath = join(
-          process.cwd(),
-          'prompts',
-          'system-prompt.txt'
-        );
-        const fileContent = readFileSync(systemPromptPath, 'utf-8');
-        console.log('LangChain: Using system prompt from file:', fileContent);
-        this.systemPrompt = fileContent;
-      } catch (error) {
-        console.error(
-          'LangChain: Failed to load system prompt from both settings and file:',
-          error
-        );
-        throw new Error(
-          'No system prompt available. Please configure a system prompt in settings or ensure system-prompt.txt exists.'
-        );
+      const fileContent = readFileSync(systemPromptPath, 'utf-8');
+      console.log('LangChain: Using system prompt from file:', fileContent);
+      this.systemPrompt = fileContent;
+
+      // Append user prompt if available
+      if (settings?.userPrompt) {
+        this.systemPrompt += '\n\n' + settings.userPrompt;
       }
+    } catch (error) {
+      console.error(
+        'LangChain: Failed to load system prompt from file:',
+        error
+      );
+      throw new Error(
+        'Failed to load system prompt. Please ensure system-prompt.txt exists.'
+      );
     }
 
     this.pageId = settings?.facebookPageId || '';
@@ -295,7 +289,23 @@ export class LangChainService {
 
   updateConfig(settings: UserSettings) {
     console.log('LangChain: Updating config with settings:', settings);
-    this.systemPrompt = settings.systemPrompt || this.systemPrompt;
+
+    // Load system prompt and append user prompt if available
+    try {
+      const systemPromptPath = join(
+        process.cwd(),
+        'prompts',
+        'system-prompt.txt'
+      );
+      const fileContent = readFileSync(systemPromptPath, 'utf-8');
+      this.systemPrompt = fileContent;
+      if (settings.userPrompt) {
+        this.systemPrompt += `\n\nThings to know about me:\n${settings.userPrompt} \n\nIf you don't find the answer in the above text always respond exactly like this: "I_DONT_KNOW"`;
+      }
+    } catch (error) {
+      console.error('LangChain: Failed to update system prompt:', error);
+    }
+
     this.pageId = settings.facebookPageId || this.pageId;
 
     if (settings.aiProvider === 'anthropic' && serverEnv.anthropicApiKey) {

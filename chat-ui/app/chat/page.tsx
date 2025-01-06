@@ -16,6 +16,8 @@ import {
 import SettingsForm from '@/components/settings-form';
 import { useSettings } from '@/contexts/SettingsContext';
 import { SettingsWarning } from '@/components/settings-warning';
+import { Spinner } from '@/components/ui/spinner';
+import { TypingIndicator } from '@/components/ui/typing-indicator';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -32,8 +34,6 @@ export default function ChatPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
-    console.log('Sending message:', input);
 
     const userMessage: Message = {
       role: 'user',
@@ -53,8 +53,7 @@ export default function ChatPage() {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      console.log('Making request to /api/chat');
-      const response = await axios.post(
+      await axios.post(
         '/api/chat',
         { message: input },
         {
@@ -63,18 +62,14 @@ export default function ChatPage() {
             'Content-Type': 'application/json',
           },
           onDownloadProgress: progressEvent => {
-            console.log('Received chunk:', progressEvent);
             const chunk = progressEvent.event.target as { response: string };
-            console.log('Chunk response:', chunk.response);
             const lines = chunk.response.split('\n');
             let fullContent = '';
 
             for (const line of lines) {
               if (line.trim() === '') continue;
               try {
-                console.log('Processing line:', line);
                 const data = JSON.parse(line);
-                console.log('Parsed data:', data);
                 fullContent += data.token;
                 setMessages(prev => {
                   const newMessages = [...prev];
@@ -89,7 +84,6 @@ export default function ChatPage() {
           },
         }
       );
-      console.log('Request completed:', response);
     } catch (error) {
       console.error('Failed to get response:', error);
       if (axios.isAxiosError(error)) {
@@ -110,16 +104,21 @@ export default function ChatPage() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-2 text-muted-foreground">
+        <Spinner className="h-6 w-6" />
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
+    <div className="flex flex-col h-[calc(100vh-12rem)] max-w-2xl mx-auto p-4">
       {!isValid && (
         <SettingsWarning onOpenSettings={() => setShowSettings(true)} />
       )}
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 flex-none">
         <h1 className="text-2xl font-bold">Instagram Engagement Assistant</h1>
         <Button
           variant="ghost"
@@ -132,16 +131,16 @@ export default function ChatPage() {
       </div>
 
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
-          <SettingsForm />
+          <SettingsForm onClose={() => setShowSettings(false)} />
         </DialogContent>
       </Dialog>
 
-      <Card className="flex-grow mb-4">
-        <ScrollArea className="h-[600px] p-4">
+      <Card className="flex-1 min-h-0 mb-4">
+        <ScrollArea className="h-full p-4">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -156,7 +155,9 @@ export default function ChatPage() {
                     : 'bg-muted'
                 }`}
               >
-                {message.content}
+                {message.content || (
+                  <TypingIndicator dotSize={6} startDelay={500} />
+                )}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 {message.timestamp.toLocaleTimeString()}

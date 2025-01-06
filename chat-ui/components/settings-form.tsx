@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import axios from 'axios';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -13,264 +14,296 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
-import type { UserSettings } from '@/services/settingsService';
+import { Loader2, HelpCircle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui';
 import { useSettings } from '@/contexts/SettingsContext';
 import { defaultModels } from '@/config/client-config';
+import {
+  settingsSchema,
+  type SettingsFormData,
+} from '@/lib/validations/settings';
+import { type ControllerRenderProps } from 'react-hook-form';
 
-type EditableFields = Pick<
-  UserSettings,
-  | 'facebookPageId'
-  | 'systemPrompt'
-  | 'aiProvider'
-  | 'openaiApiKey'
-  | 'openaiModel'
-  | 'anthropicApiKey'
-  | 'anthropicModel'
->;
+type FormFieldProps = ControllerRenderProps<SettingsFormData>;
 
-export default function SettingsForm() {
+type SettingsFormProps = {
+  onClose: () => void;
+};
+
+export default function SettingsForm({ onClose }: SettingsFormProps) {
   const { settings, refreshSettings } = useSettings();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<EditableFields>>({
-    aiProvider: 'openai',
-    openaiModel: defaultModels.openaiModel,
-    anthropicModel: defaultModels.anthropicModel,
+  const { toast } = useToast();
+  const form = useForm<SettingsFormData>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      facebookPageId: '',
+      userPrompt: '',
+      aiProvider: 'openai',
+      openaiApiKey: '',
+      openaiModel: defaultModels.openaiModel,
+      anthropicApiKey: '',
+      anthropicModel: defaultModels.anthropicModel,
+    },
   });
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { isSubmitting } = form.formState;
 
   useEffect(() => {
     if (settings) {
-      // Only copy editable fields
-      const editableSettings: Partial<EditableFields> = {
-        facebookPageId: settings.facebookPageId,
-        systemPrompt: settings.systemPrompt,
+      form.reset({
+        facebookPageId: settings.facebookPageId || '',
+        userPrompt: settings.userPrompt || '',
         aiProvider: settings.aiProvider,
-        openaiApiKey: settings.openaiApiKey,
-        openaiModel: settings.openaiModel,
-        anthropicApiKey: settings.anthropicApiKey,
-        anthropicModel: settings.anthropicModel,
-      };
-      setEditForm(editableSettings);
+        openaiApiKey: settings.openaiApiKey || '',
+        openaiModel: settings.openaiModel || defaultModels.openaiModel,
+        anthropicApiKey: settings.anthropicApiKey || '',
+        anthropicModel: settings.anthropicModel || defaultModels.anthropicModel,
+      });
     }
-  }, [settings]);
+  }, [settings, form]);
 
-  const handleUpdateSettings = async () => {
+  const onSubmit = async (data: SettingsFormData) => {
     try {
-      setIsLoading(true);
       if (!settings) {
-        // Create new settings if none exist
         await axios.post('/api/settings', {
           name: 'Default Configuration',
-          ...editForm,
+          ...data,
         });
       } else {
-        // Update existing settings
-        // Only send the fields that have changed
-        const updates: Partial<EditableFields> = {};
-        (Object.keys(editForm) as Array<keyof EditableFields>).forEach(key => {
-          const value = editForm[key];
-          const currentValue = settings[key];
-
-          // Skip if the values are the same
-          if (value === currentValue) return;
-
-          // Special handling for aiProvider to ensure type safety
-          if (
-            key === 'aiProvider' &&
-            (value === 'openai' || value === 'anthropic')
-          ) {
-            updates[key] = value;
-          } else if (key !== 'aiProvider') {
-            updates[key] = value;
-          }
-        });
-
         await axios.put('/api/settings', {
           id: settings.id,
-          updates,
+          updates: data,
         });
       }
       await refreshSettings();
-      setIsEditing(false);
+      toast({
+        title: 'Settings saved',
+        description: 'Your settings have been updated successfully.',
+        duration: 3000,
+      });
+      onClose();
     } catch (error) {
       console.error('Error updating settings:', error);
-    } finally {
-      setIsLoading(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to save settings. Please try again.',
+        variant: 'destructive',
+        duration: 5000,
+      });
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Label>
-          Facebook Page ID <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          value={editForm.facebookPageId || ''}
-          onChange={e =>
-            setEditForm(prev => ({
-              ...prev,
-              facebookPageId: e.target.value,
-            }))
-          }
-          disabled={!isEditing || isLoading}
-          required
-          placeholder="Enter your Facebook Page ID"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="facebookPageId"
+          render={({ field }: { field: FormFieldProps }) => (
+            <FormItem>
+              <FormLabel>
+                Facebook Page ID <span className="text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="Enter your Facebook Page ID"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Required. Your Facebook Page ID is needed to interact with your
+                page.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-sm text-muted-foreground">
-          Required. Your Facebook Page ID is needed to interact with your page.
-        </p>
-      </div>
 
-      <div className="space-y-2">
-        <Label>System Prompt</Label>
-        <Textarea
-          value={editForm.systemPrompt || ''}
-          onChange={e =>
-            setEditForm(prev => ({
-              ...prev,
-              systemPrompt: e.target.value,
-            }))
-          }
-          disabled={!isEditing || isLoading}
-          rows={5}
-          placeholder="Leave empty to use system default"
+        <FormField
+          control={form.control}
+          name="userPrompt"
+          render={({ field }: { field: FormFieldProps }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                Personal Details <span className="text-red-500">*</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Add personal details that will be combined with the
+                        system prompt. Start with &ldquo;Things to know about
+                        me:&rdquo; and list key information about yourself.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  rows={5}
+                  placeholder="Things to know about me:"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Required. This information will be combined with the system
+                prompt to personalize responses.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-sm text-muted-foreground">
-          The system prompt that guides the AIs behavior. Leave empty to use the
-          default prompt.
-        </p>
-      </div>
 
-      <div className="space-y-2">
-        <Label>AI Provider</Label>
-        <Select
-          value={editForm.aiProvider}
-          onValueChange={value =>
-            setEditForm(prev => ({
-              ...prev,
-              aiProvider: value as 'openai' | 'anthropic',
-            }))
-          }
-          disabled={!isEditing || isLoading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select provider" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="openai">OpenAI</SelectItem>
-            <SelectItem value="anthropic">Anthropic</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        <FormField
+          control={form.control}
+          name="aiProvider"
+          render={({ field }: { field: FormFieldProps }) => (
+            <FormItem>
+              <FormLabel>AI Provider</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={isSubmitting}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      {editForm.aiProvider === 'openai' && (
-        <>
-          <div className="space-y-2">
-            <Label>OpenAI API Key</Label>
-            <Input
-              type="password"
-              value={editForm.openaiApiKey || ''}
-              onChange={e =>
-                setEditForm(prev => ({
-                  ...prev,
-                  openaiApiKey: e.target.value,
-                }))
-              }
-              disabled={!isEditing || isLoading}
-              placeholder="Leave empty to use system default"
-            />
-            <p className="text-sm text-muted-foreground">
-              Your OpenAI API key. Leave empty to use the system default key.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label>OpenAI Model</Label>
-            <Input
-              value={editForm.openaiModel || ''}
-              onChange={e =>
-                setEditForm(prev => ({
-                  ...prev,
-                  openaiModel: e.target.value,
-                }))
-              }
-              disabled={!isEditing || isLoading}
-              placeholder="Leave empty to use system default"
-            />
-            <p className="text-sm text-muted-foreground">
-              The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to use
-              the system default model.
-            </p>
-          </div>
-        </>
-      )}
-
-      {editForm.aiProvider === 'anthropic' && (
-        <>
-          <div className="space-y-2">
-            <Label>Anthropic API Key</Label>
-            <Input
-              type="password"
-              value={editForm.anthropicApiKey || ''}
-              onChange={e =>
-                setEditForm(prev => ({
-                  ...prev,
-                  anthropicApiKey: e.target.value,
-                }))
-              }
-              disabled={!isEditing || isLoading}
-              placeholder="Leave empty to use system default"
-            />
-            <p className="text-sm text-muted-foreground">
-              Your Anthropic API key. Leave empty to use the system default key.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label>Anthropic Model</Label>
-            <Input
-              value={editForm.anthropicModel || ''}
-              onChange={e =>
-                setEditForm(prev => ({
-                  ...prev,
-                  anthropicModel: e.target.value,
-                }))
-              }
-              disabled={!isEditing || isLoading}
-              placeholder="Leave empty to use system default"
-            />
-            <p className="text-sm text-muted-foreground">
-              The Anthropic model to use (e.g., claude-3-opus-20240229). Leave
-              empty to use the system default model.
-            </p>
-          </div>
-        </>
-      )}
-
-      <div className="flex justify-end gap-2 pt-4">
-        {isEditing ? (
+        {form.watch('aiProvider') === 'openai' && (
           <>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditForm(settings || {});
-                setIsEditing(false);
-              }}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateSettings} disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save
-            </Button>
+            <FormField
+              control={form.control}
+              name="openaiApiKey"
+              render={({ field }: { field: FormFieldProps }) => (
+                <FormItem>
+                  <FormLabel>OpenAI API Key</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="password"
+                      placeholder="Leave empty to use system default"
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    Your OpenAI API key. Leave empty to use the system default
+                    key.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="openaiModel"
+              render={({ field }: { field: FormFieldProps }) => (
+                <FormItem>
+                  <FormLabel>OpenAI Model</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Leave empty to use system default"
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to
+                    use the system default model.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </>
-        ) : (
-          <Button onClick={() => setIsEditing(true)} disabled={isLoading}>
-            Edit
-          </Button>
         )}
-      </div>
-    </div>
+
+        {form.watch('aiProvider') === 'anthropic' && (
+          <>
+            <FormField
+              control={form.control}
+              name="anthropicApiKey"
+              render={({ field }: { field: FormFieldProps }) => (
+                <FormItem>
+                  <FormLabel>Anthropic API Key</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="password"
+                      placeholder="Leave empty to use system default"
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    Your Anthropic API key. Leave empty to use the system
+                    default key.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="anthropicModel"
+              render={({ field }: { field: FormFieldProps }) => (
+                <FormItem>
+                  <FormLabel>Anthropic Model</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Leave empty to use system default"
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    The Anthropic model to use (e.g., claude-3-opus-20240229).
+                    Leave empty to use the system default model.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

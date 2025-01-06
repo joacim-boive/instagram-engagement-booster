@@ -26,6 +26,7 @@
       "@/components/*": ["./components/*"],
       "@/contexts/*": ["./contexts/*"],
       "@/config/*": ["./app/config/*"],
+      "@/hooks/*": ["./hooks/*"],
       "@/lib/*": ["./lib/*"]
     }
   },

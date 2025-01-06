@@ -1,5 +1,6 @@
 import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { Toaster } from '@/components/ui/toaster';
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -29,6 +30,7 @@ export default function RootLayout({
                 </SignedIn>
               </header>
               <main>{children}</main>
+              <Toaster />
             </SettingsProvider>
           </div>
         </body>
