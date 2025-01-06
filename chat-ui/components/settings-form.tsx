@@ -199,8 +199,8 @@ export default function SettingsForm() {
               placeholder="Leave empty to use system default"
             />
             <p className="text-sm text-muted-foreground">
-              The OpenAI model to use (e.g., gpt-4-turbo-preview). Leave empty
-              to use the system default model.
+              The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to use
+              the system default model.
             </p>
           </div>
         </>

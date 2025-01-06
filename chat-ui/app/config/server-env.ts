@@ -8,7 +8,7 @@ const getEnvVar = (key: string): string => {
 
 export const serverEnv = {
   openaiApiKey: getEnvVar('OPENAI_API_KEY'),
-  openaiModel: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+  openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-3-opus-20240229',
   trainingDataPath: process.env.TRAINING_DATA_PATH || 'training-data.json',
