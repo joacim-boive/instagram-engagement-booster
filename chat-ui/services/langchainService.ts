@@ -106,6 +106,11 @@ export class LangChainService {
         temperature: 0.7,
       });
     }
+
+    // Initialize vector store with training data
+    this.initializeVectorStore().catch(error => {
+      console.error('LangChain: Failed to initialize vector store:', error);
+    });
   }
 
   async streamingChat(
@@ -171,40 +176,54 @@ export class LangChainService {
     });
   }
 
-  async initializeVectorStore(conversations: Conversation[]) {
-    if (this.initialized || this.isInitializing) return;
-
-    this.isInitializing = true;
-    const timeLabel = 'vectorization-' + Date.now();
-    console.time(timeLabel);
+  async initializeVectorStore(conversations?: Conversation[]): Promise<void> {
+    if (this.isInitializing || this.initialized) {
+      return;
+    }
 
     try {
-      // Store conversations in memory for quick lookup
-      conversations.forEach(conv => {
-        this.conversationMap.set(conv.commentId, conv);
-      });
+      this.isInitializing = true;
+      console.log('LangChain: Initializing vector store');
 
-      // Prepare documents in batches
-      const documents: Document[] = [];
-      for (let i = 0; i < conversations.length; i += VECTOR_CONFIG.BATCH_SIZE) {
-        const batch = conversations.slice(i, i + VECTOR_CONFIG.BATCH_SIZE);
-        const batchDocs = this.prepareBatchDocuments(batch);
-        documents.push(...batchDocs);
+      let trainingData: Conversation[] = [];
+      if (conversations) {
+        console.log('LangChain: Using provided conversations:', {
+          conversationCount: conversations.length,
+        });
+        trainingData = conversations;
+      } else {
+        // Load training data from file
+        const trainingDataPath = join(process.cwd(), 'training-data.json');
+        trainingData = JSON.parse(readFileSync(trainingDataPath, 'utf-8'));
+        console.log('LangChain: Loaded training data from file:', {
+          conversationCount: trainingData.length,
+        });
       }
 
+      // Convert conversations to documents
+      const documents = this.prepareBatchDocuments(trainingData);
+      console.log('LangChain: Prepared documents:', {
+        documentCount: documents.length,
+      });
+
+      // Create and populate vector store
       this.vectorStore = await MemoryVectorStore.fromDocuments(
         documents,
         this.embeddings
       );
+      console.log('LangChain: Vector store initialized');
 
       this.initialized = true;
-      console.log(`Vectorized ${documents.length} conversations`);
-    } catch (error) {
-      console.error('Vectorization failed:', error);
-      throw error;
-    } finally {
-      console.timeEnd(timeLabel);
       this.isInitializing = false;
+
+      // Store conversations in memory for future reference
+      trainingData.forEach(conv => {
+        this.conversationMap.set(conv.commentId, conv);
+      });
+    } catch (error) {
+      this.isInitializing = false;
+      console.error('LangChain: Vector store initialization failed:', error);
+      throw error;
     }
   }
 
@@ -249,21 +268,29 @@ export class LangChainService {
   }
 
   private async getRelevantExamples(query: string): Promise<string[]> {
-    if (!this.initialized || !this.vectorStore) {
-      return [];
+    // Wait for initialization or initialize
+    while (!this.initialized) {
+      if (!this.isInitializing) {
+        await this.initializeVectorStore();
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    try {
-      const results = await this.vectorStore.similaritySearch(
-        query,
-        VECTOR_CONFIG.DEFAULT_LIMIT
-      );
-
-      return results.map(doc => doc.pageContent);
-    } catch (error) {
-      console.error('Error getting relevant examples:', error);
-      return [];
+    if (!this.vectorStore) {
+      throw new Error('Vector store not initialized');
     }
+
+    return this.vectorStore
+      .similaritySearchWithScore(query, VECTOR_CONFIG.DEFAULT_LIMIT)
+      .then(results =>
+        results.map(
+          ([doc, score]) => `[Score: ${score.toFixed(3)}]\n${doc.pageContent}`
+        )
+      )
+      .catch(error => {
+        console.error('Error getting relevant examples:', error);
+        return [];
+      });
   }
 
   updateConfig(settings: UserSettings) {
