@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import SettingsForm from '@/components/settings-form';
+import { useSettings } from '@/contexts/SettingsContext';
+import { SettingsWarning } from '@/components/settings-warning';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -21,14 +24,16 @@ type Message = {
 };
 
 export default function ChatPage() {
+  const { isValid, isLoading } = useSettings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+
+    console.log('Sending message:', input);
 
     const userMessage: Message = {
       role: 'user',
@@ -38,7 +43,6 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
-    setIsLoading(true);
 
     // Create a placeholder for the assistant's message
     const assistantMessage: Message = {
@@ -49,62 +53,72 @@ export default function ChatPage() {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
-        body: JSON.stringify({ message: input }),
-      });
+      console.log('Making request to /api/chat');
+      const response = await axios.post(
+        '/api/chat',
+        { message: input },
+        {
+          responseType: 'stream',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          onDownloadProgress: progressEvent => {
+            console.log('Received chunk:', progressEvent);
+            const chunk = progressEvent.event.target as { response: string };
+            console.log('Chunk response:', chunk.response);
+            const lines = chunk.response.split('\n');
+            let fullContent = '';
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
-
-      // Read the stream
-      let fullContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // Decode the chunk
-        const text = new TextDecoder().decode(value);
-
-        // Split the text into lines and process each complete line
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.trim() === '') continue;
-          try {
-            const data = JSON.parse(line);
-            fullContent += data.token;
-            // Update the last message with the complete content
-            setMessages(prev => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              lastMessage.content = fullContent;
-              return newMessages;
-            });
-          } catch (e) {
-            console.warn('Failed to parse line:', line, e);
-          }
+            for (const line of lines) {
+              if (line.trim() === '') continue;
+              try {
+                console.log('Processing line:', line);
+                const data = JSON.parse(line);
+                console.log('Parsed data:', data);
+                fullContent += data.token;
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMessage = newMessages[newMessages.length - 1];
+                  lastMessage.content = fullContent;
+                  return newMessages;
+                });
+              } catch (e) {
+                console.warn('Failed to parse line:', line, e);
+              }
+            }
+          },
         }
-      }
+      );
+      console.log('Request completed:', response);
     } catch (error) {
       console.error('Failed to get response:', error);
-      // Update the last message to show the error
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers,
+        });
+      }
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
         lastMessage.content = 'Error: Failed to generate response';
         return newMessages;
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
+      {!isValid && (
+        <SettingsWarning onOpenSettings={() => setShowSettings(true)} />
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Instagram Engagement Assistant</h1>
         <Button
@@ -122,7 +136,7 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
-          <SettingsForm onClose={() => setShowSettings(false)} />
+          <SettingsForm />
         </DialogContent>
       </Dialog>
 
@@ -160,10 +174,10 @@ export default function ChatPage() {
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Type your message..."
-          disabled={isLoading}
+          disabled={!isValid}
           className="flex-grow"
         />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={!isValid || isLoading}>
           Send
         </Button>
       </form>

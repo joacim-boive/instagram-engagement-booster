@@ -1,87 +1,85 @@
 import { NextResponse } from 'next/server';
-import { getAiService } from '@/lib/singleton';
 import { auth } from '@clerk/nextjs/server';
 import { getUserSettings } from '@/services/settingsService';
-import { env } from '../../config/env';
-import type { ProviderConfig } from '@/services/ai/types';
+import { LangChainService } from '@/services/langchainService';
+import { serverEnv } from '@/config/server-env';
+
+// Singleton instance of LangChainService to reuse across requests
+let langChainService: LangChainService | null = null;
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
 
   try {
+    console.log('Chat API: Received request');
+    console.log('Chat API: Server environment:', {
+      hasOpenAIKey: !!serverEnv.openaiApiKey,
+      openAIModel: serverEnv.openaiModel,
+      hasAnthropicKey: !!serverEnv.anthropicApiKey,
+      anthropicModel: serverEnv.anthropicModel,
+    });
+
+    // Ensure user is authenticated
     const { userId } = await auth();
     if (!userId) {
+      console.log('Chat API: Unauthorized - no userId');
       return new Response('Unauthorized', { status: 401 });
     }
+    console.log('Chat API: Authenticated user:', userId);
 
-    const { message } = await request.json();
-
+    // Validate request body
+    const body = await request.json();
+    console.log('Chat API: Request body:', body);
+    const { message } = body;
     if (!message) {
+      console.log('Chat API: Missing message in request');
       return NextResponse.json(
         { error: 'Message is required' },
         { status: 400 }
       );
     }
 
-    // Get user settings and AI service
-    const [userSettings, aiService] = await Promise.all([
-      getUserSettings(),
-      getAiService(),
-    ]);
+    // Get user settings and initialize or update LangChain service
+    const settings = await getUserSettings();
+    console.log('Chat API: Retrieved settings:', settings);
 
-    // Configure the service with user settings if available
-    if (userSettings[0]) {
-      const settings = userSettings[0];
-      const config: ProviderConfig = {
-        openai:
-          settings.aiProvider === 'openai' &&
-          (settings.openaiApiKey || env.openaiApiKey)
-            ? {
-                apiKey: (settings.openaiApiKey || env.openaiApiKey)!,
-                model: settings.openaiModel || env.openaiModel,
-              }
-            : undefined,
-        anthropic:
-          settings.aiProvider === 'anthropic' &&
-          (settings.anthropicApiKey || env.anthropicApiKey)
-            ? {
-                apiKey: (settings.anthropicApiKey || env.anthropicApiKey)!,
-                model: settings.anthropicModel || env.anthropicModel,
-              }
-            : undefined,
-      };
+    if (!settings?.facebookPageId) {
+      console.log('Chat API: Missing required Facebook Page ID');
+      return NextResponse.json(
+        { error: 'Facebook Page ID is required in settings' },
+        { status: 400 }
+      );
+    }
 
-      aiService.updateConfig(config, settings.systemPrompt);
-
-      console.log('Applied user configuration:', {
-        provider: settings.aiProvider,
-        model:
-          settings.aiProvider === 'openai'
-            ? settings.openaiModel || env.openaiModel
-            : settings.anthropicModel || env.anthropicModel,
-        usingCustomKey:
-          settings.aiProvider === 'openai'
-            ? !!settings.openaiApiKey
-            : !!settings.anthropicApiKey,
-        systemPrompt: settings.systemPrompt || 'using default system prompt',
-      });
+    // Initialize or update LangChain service with current settings
+    if (!langChainService) {
+      console.log('Chat API: Initializing new LangChain service');
+      langChainService = new LangChainService(settings);
+    } else {
+      console.log('Chat API: Updating existing LangChain service');
+      langChainService.updateConfig(settings);
     }
 
     // Create a TransformStream for streaming the response
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
 
+    console.log('Chat API: Starting streaming response');
     // Start generating the response in the background
-    aiService
-      .generateStreamingResponse(message, async (token: string) => {
+    langChainService
+      .streamingChat(message, async (token: string) => {
         await writer.write(encoder.encode(JSON.stringify({ token }) + '\n'));
       })
-      .then(() => writer.close())
+      .then(() => {
+        console.log('Chat API: Streaming completed');
+        writer.close();
+      })
       .catch(error => {
-        console.error('Streaming error:', error);
+        console.error('Chat API: Streaming error:', error);
         writer.abort(error);
       });
 
+    console.log('Chat API: Returning stream response');
     return new Response(stream.readable, {
       headers: {
         'Content-Type': 'text/event-stream',

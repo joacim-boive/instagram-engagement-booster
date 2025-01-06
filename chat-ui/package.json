@@ -2,6 +2,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
     "@clerk/nextjs": "^6.9.6",
+    "@langchain/anthropic": "^0.3.11",
     "@langchain/community": "^0.3.21",
     "@langchain/core": "^0.3.27",
     "@langchain/openai": "^0.3.16",

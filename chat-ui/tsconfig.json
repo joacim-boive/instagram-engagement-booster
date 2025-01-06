@@ -25,6 +25,7 @@
       "@/scripts/*": ["./src/scripts/*"],
       "@/components/*": ["./components/*"],
       "@/contexts/*": ["./contexts/*"],
+      "@/config/*": ["./app/config/*"],
       "@/lib/*": ["./lib/*"]
     }
   },

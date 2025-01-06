@@ -8,15 +8,12 @@ import {
   type ReactNode,
 } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import axios from 'axios';
 import type { UserSettings } from '@/services/settingsService';
 
-// Define default settings
-const defaultSettings: Omit<
-  UserSettings,
-  'userId' | 'id' | 'createdAt' | 'updatedAt'
-> = {
-  name: 'Default Configuration',
-  aiProvider: 'openai',
+export const isSettingsValid = (settings: UserSettings | null): boolean => {
+  if (!settings) return false;
+  return Boolean(settings.facebookPageId);
 };
 
 type SettingsContextType = {
@@ -24,6 +21,7 @@ type SettingsContextType = {
   refreshSettings: () => Promise<void>;
   isLoading: boolean;
   initializeDefaultSettings: () => Promise<void>;
+  isValid: boolean;
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(
@@ -40,23 +38,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...defaultSettings,
-          userId,
-        }),
+      const { data } = await axios.post('/api/settings', {
+        name: 'Default Configuration',
+        aiProvider: 'openai',
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to initialize settings');
-      }
-
-      const newSettings = await response.json();
-      setSettings(newSettings);
+      setSettings(data);
     } catch (error) {
       console.error('Error initializing settings:', error);
     } finally {
@@ -73,25 +59,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/settings');
+      const { data } = await axios.get('/api/settings');
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setSettings(null);
-          return;
-        }
-        throw new Error('Failed to fetch settings');
-      }
-
-      const data = await response.json();
-
-      // If no settings exist, initialize default settings
-      if (!data || data.length === 0) {
+      if (!data) {
         await initializeDefaultSettings();
         return;
       }
 
-      setSettings(data[0]);
+      setSettings(data);
     } catch (error) {
       console.error('Error fetching settings:', error);
       setSettings(null);
@@ -106,6 +81,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoaded, isSignedIn]);
 
+  const isValid = isSettingsValid(settings);
+
   return (
     <SettingsContext.Provider
       value={{
@@ -113,6 +90,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         refreshSettings,
         isLoading,
         initializeDefaultSettings,
+        isValid,
       }}
     >
       {children}

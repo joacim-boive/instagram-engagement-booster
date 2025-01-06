@@ -6,8 +6,7 @@ const getEnvVar = (key: string): string => {
   return value;
 };
 
-export const env = {
-  facebookPageId: getEnvVar('FACEBOOK_PAGE_ID'),
+export const serverEnv = {
   openaiApiKey: getEnvVar('OPENAI_API_KEY'),
   openaiModel: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -15,5 +14,4 @@ export const env = {
   trainingDataPath: process.env.TRAINING_DATA_PATH || 'training-data.json',
   systemPromptPath:
     process.env.SYSTEM_PROMPT_PATH || 'prompts/system-prompt.txt',
-  vectorStorePath: process.env.VECTOR_STORE_PATH || './vector-store.json',
 } as const;

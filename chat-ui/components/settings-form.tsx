@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,16 +16,42 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import type { UserSettings } from '@/services/settingsService';
 import { useSettings } from '@/contexts/SettingsContext';
+import { defaultModels } from '@/config/client-config';
+
+type EditableFields = Pick<
+  UserSettings,
+  | 'facebookPageId'
+  | 'systemPrompt'
+  | 'aiProvider'
+  | 'openaiApiKey'
+  | 'openaiModel'
+  | 'anthropicApiKey'
+  | 'anthropicModel'
+>;
 
 export default function SettingsForm() {
   const { settings, refreshSettings } = useSettings();
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<UserSettings>>({});
+  const [editForm, setEditForm] = useState<Partial<EditableFields>>({
+    aiProvider: 'openai',
+    openaiModel: defaultModels.openaiModel,
+    anthropicModel: defaultModels.anthropicModel,
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (settings) {
-      setEditForm(settings);
+      // Only copy editable fields
+      const editableSettings: Partial<EditableFields> = {
+        facebookPageId: settings.facebookPageId,
+        systemPrompt: settings.systemPrompt,
+        aiProvider: settings.aiProvider,
+        openaiApiKey: settings.openaiApiKey,
+        openaiModel: settings.openaiModel,
+        anthropicApiKey: settings.anthropicApiKey,
+        anthropicModel: settings.anthropicModel,
+      };
+      setEditForm(editableSettings);
     }
   }, [settings]);
 
@@ -33,20 +60,36 @@ export default function SettingsForm() {
       setIsLoading(true);
       if (!settings) {
         // Create new settings if none exist
-        const response = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Default Configuration', ...editForm }),
+        await axios.post('/api/settings', {
+          name: 'Default Configuration',
+          ...editForm,
         });
-        if (!response.ok) throw new Error('Failed to create settings');
       } else {
         // Update existing settings
-        const response = await fetch('/api/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: settings.id, updates: editForm }),
+        // Only send the fields that have changed
+        const updates: Partial<EditableFields> = {};
+        (Object.keys(editForm) as Array<keyof EditableFields>).forEach(key => {
+          const value = editForm[key];
+          const currentValue = settings[key];
+
+          // Skip if the values are the same
+          if (value === currentValue) return;
+
+          // Special handling for aiProvider to ensure type safety
+          if (
+            key === 'aiProvider' &&
+            (value === 'openai' || value === 'anthropic')
+          ) {
+            updates[key] = value;
+          } else if (key !== 'aiProvider') {
+            updates[key] = value;
+          }
         });
-        if (!response.ok) throw new Error('Failed to update settings');
+
+        await axios.put('/api/settings', {
+          id: settings.id,
+          updates,
+        });
       }
       await refreshSettings();
       setIsEditing(false);
@@ -59,6 +102,27 @@ export default function SettingsForm() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-2">
+        <Label>
+          Facebook Page ID <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          value={editForm.facebookPageId || ''}
+          onChange={e =>
+            setEditForm(prev => ({
+              ...prev,
+              facebookPageId: e.target.value,
+            }))
+          }
+          disabled={!isEditing || isLoading}
+          required
+          placeholder="Enter your Facebook Page ID"
+        />
+        <p className="text-sm text-muted-foreground">
+          Required. Your Facebook Page ID is needed to interact with your page.
+        </p>
+      </div>
+
       <div className="space-y-2">
         <Label>System Prompt</Label>
         <Textarea

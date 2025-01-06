@@ -1,20 +1,29 @@
 import { NextResponse } from 'next/server';
-import { getAiService } from '@/lib/singleton';
+import { auth } from '@clerk/nextjs/server';
+import { LangChainService } from '@/services/langchainService';
+import { getUserSettings } from '@/services/settingsService';
 
-export async function GET() {
+export async function POST() {
   try {
-    const aiService = getAiService();
-    await aiService.initializeVectorStore();
+    const { userId } = await auth();
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 });
+    }
 
-    const stats = aiService.getStats();
+    const settings = await getUserSettings();
+
+    // Initialize LangChain service
+    const langchainService = new LangChainService(settings);
+
+    // Return initialization status
     return NextResponse.json({
-      status: stats.isInitialized ? 'initialized' : 'initializing',
-      stats,
+      initialized: true,
+      stats: langchainService.getStats(),
     });
   } catch (error) {
-    console.error('Error in init API:', error);
+    console.error('Failed to initialize:', error);
     return NextResponse.json(
-      { error: 'Initialization failed' },
+      { error: 'Failed to initialize' },
       { status: 500 }
     );
   }
