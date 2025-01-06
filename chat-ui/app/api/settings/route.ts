@@ -29,6 +29,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
+    if (!body.userPrompt) {
+      return NextResponse.json(
+        { error: 'Personal Details are required' },
+        { status: 400 }
+      );
+    }
+
     const settings = await createUserSettings(name, otherSettings);
     return NextResponse.json(settings);
   } catch (error) {
@@ -60,22 +67,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Extract actual updates, handling both direct and nested cases
-    const actualUpdates = updates.facebookPageId
-      ? updates
-      : Object.values(updates)[0];
+    // Merge current settings with updates to validate the final state
+    const finalSettings = {
+      ...currentSettings,
+      ...updates,
+    };
 
-    if (!actualUpdates?.facebookPageId) {
+    if (!finalSettings.facebookPageId) {
       return NextResponse.json(
         { error: 'Facebook Page ID is required' },
         { status: 400 }
       );
     }
 
-    const settings = await updateUserSettings(
-      currentSettings.id,
-      actualUpdates
-    );
+    if (!finalSettings.userPrompt) {
+      return NextResponse.json(
+        { error: 'Personal Details are required' },
+        { status: 400 }
+      );
+    }
+
+    const settings = await updateUserSettings(currentSettings.id, updates);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to update settings:', error);

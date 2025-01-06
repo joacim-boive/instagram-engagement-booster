@@ -13,7 +13,7 @@ import type { UserSettings } from '@/services/settingsService';
 
 export const isSettingsValid = (settings: UserSettings | null): boolean => {
   if (!settings) return false;
-  return Boolean(settings.facebookPageId);
+  return Boolean(settings.facebookPageId && settings.userPrompt);
 };
 
 type SettingsContextType = {
