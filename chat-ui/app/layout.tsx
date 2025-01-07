@@ -26,7 +26,15 @@ export default function RootLayout({
             <SettingsProvider>
               <header className="fixed top-0 right-0 p-4">
                 <SignedIn>
-                  <UserButton afterSignOutUrl="/" />
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: 'w-10 h-10', // Tailwind classes for 48x48px
+                        userButtonAvatarBox: 'w-10 h-10',
+                      },
+                    }}
+                    afterSignOutUrl="/"
+                  />
                 </SignedIn>
               </header>
               <main>{children}</main>
