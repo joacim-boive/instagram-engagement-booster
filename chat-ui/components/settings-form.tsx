@@ -94,6 +94,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
         title: 'Settings saved',
         description: 'Your settings have been updated successfully.',
         duration: 3000,
+        variant: 'info',
       });
       onClose();
     } catch (error) {
