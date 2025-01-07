@@ -13,7 +13,7 @@ Technical Stack Requirements:
   - Langchain Anthropic 0.3.21 - https://js.langchain.com/docs/integrations/anthropic
   - Langchain Community 0.3.21 - https://js.langchain.com/docs/integrations/community
   - Langchain Core 0.3.27 - https://js.langchain.com/docs/core/
-  - Shadcn UI 0.9.4 - https://ui.shadcn.com/docs
+  - Shadcn 0.9.4 - https://ui.shadcn.com/docs
   - Use NPM for package management
   - MacOS environment
 
