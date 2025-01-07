@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,15 @@ export default function ChatPage() {
   const { isValid, isLoading } = useSettings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +159,7 @@ export default function ChatPage() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </ScrollArea>
           </Card>
         </div>

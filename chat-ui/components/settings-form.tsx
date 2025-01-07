@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, HelpCircle } from 'lucide-react';
+import { Loader2, HelpCircle, Facebook } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -119,13 +119,68 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
               <FormLabel>
                 Facebook Page ID <span className="text-red-500">*</span>
               </FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  placeholder="Enter your Facebook Page ID"
-                  disabled={isSubmitting}
-                />
-              </FormControl>
+              <div className="space-y-2">
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="Enter your Facebook Page ID"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      const response = await axios.post('/api/auth/meta/init');
+                      window.open(
+                        response.data.authUrl,
+                        '_blank',
+                        'width=600,height=800'
+                      );
+
+                      // Poll for completion
+                      const interval = setInterval(async () => {
+                        try {
+                          const statusResponse = await axios.get(
+                            '/api/auth/meta/status'
+                          );
+                          if (statusResponse.data.pageId) {
+                            clearInterval(interval);
+                            form.setValue(
+                              'facebookPageId',
+                              statusResponse.data.pageId
+                            );
+                            toast({
+                              title: 'Success',
+                              description:
+                                'Facebook Page ID retrieved successfully.',
+                              variant: 'info',
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error checking auth status:', error);
+                        }
+                      }, 2000);
+
+                      // Clear interval after 2 minutes
+                      setTimeout(() => clearInterval(interval), 120000);
+                    } catch (error) {
+                      console.error('Error initiating Meta auth:', error);
+                      toast({
+                        title: 'Error',
+                        description:
+                          'Failed to connect to Meta. Please try again.',
+                        variant: 'destructive',
+                      });
+                    }
+                  }}
+                >
+                  <Facebook className="w-4 h-4 mr-2" />
+                  Connect Meta Account
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Required. Your Facebook Page ID is needed to interact with your
                 page.
