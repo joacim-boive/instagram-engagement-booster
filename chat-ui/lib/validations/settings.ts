@@ -8,7 +8,7 @@ export const settingsSchema = z.object({
       'Facebook Page ID is required and must be exactly 15 digits'
     ),
   userPrompt: z.string().min(1, 'Personal Details are required'),
-  aiProvider: z.enum(['openai', 'anthropic']),
+  aiProvider: z.enum(['openai', 'anthropic']).default('openai'),
   openaiApiKey: z.string().optional(),
   openaiModel: z.string().optional(),
   anthropicApiKey: z.string().optional(),

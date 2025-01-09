@@ -37,11 +37,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
 
     try {
+      console.log('Initializing default settings for user:', userId);
       setIsLoading(true);
       const { data } = await axios.post('/api/settings', {
         name: 'Default Configuration',
         aiProvider: 'openai',
       });
+      console.log('Default settings created:', data);
       setSettings(data);
     } catch (error) {
       console.error('Error initializing settings:', error);
@@ -52,21 +54,31 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const refreshSettings = async () => {
     if (!isSignedIn || !userId) {
+      console.log('No user signed in, clearing settings');
       setSettings(null);
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('Refreshing settings for user:', userId);
       setIsLoading(true);
       const { data } = await axios.get('/api/settings');
+      console.log('Received settings data:', data);
 
       if (!data) {
+        console.log('No settings found, initializing defaults');
         await initializeDefaultSettings();
         return;
       }
 
-      setSettings(data);
+      const validatedSettings = {
+        ...data,
+        aiProvider: data.aiProvider || 'openai',
+      };
+      console.log('Setting validated settings:', validatedSettings);
+
+      setSettings(validatedSettings);
     } catch (error) {
       console.error('Error fetching settings:', error);
       setSettings(null);
@@ -76,12 +88,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('Auth state changed:', { isLoaded, isSignedIn, userId });
     if (isLoaded && isSignedIn) {
       refreshSettings();
     }
   }, [isLoaded, isSignedIn]);
 
   const isValid = isSettingsValid(settings);
+  console.log('Current settings state:', { settings, isValid, isLoading });
 
   return (
     <SettingsContext.Provider

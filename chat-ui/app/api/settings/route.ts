@@ -9,7 +9,9 @@ import type { UserSettings } from '@/services/settingsService';
 
 export async function GET() {
   try {
+    console.log('GET /api/settings - Fetching settings');
     const settings = await getUserSettings();
+    console.log('Settings retrieved:', settings);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to get settings:', error);
@@ -22,10 +24,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('POST /api/settings - Creating settings');
     const body = await request.json();
+    console.log('Request body:', body);
     const { name, ...otherSettings } = body as Partial<UserSettings>;
 
     if (!name) {
+      console.log('Name is required');
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
@@ -35,6 +40,7 @@ export async function POST(request: NextRequest) {
       aiProvider: otherSettings.aiProvider || 'openai',
       userPrompt: otherSettings.userPrompt || '',
     });
+    console.log('Settings created:', settings);
 
     return NextResponse.json(settings);
   } catch (error) {
@@ -42,6 +48,7 @@ export async function POST(request: NextRequest) {
       error instanceof Error &&
       error.message === 'Settings already exist for this user'
     ) {
+      console.log('Settings already exist for user');
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
     console.error('Failed to create settings:', error);
@@ -54,12 +61,15 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    console.log('PUT /api/settings - Updating settings');
     const body = await request.json();
+    console.log('Request body:', body);
     const { updates } = body;
 
     // Get current settings to get the ID
     const currentSettings = await getUserSettings();
     if (!currentSettings) {
+      console.log('Settings not found');
       return NextResponse.json(
         { error: 'Settings not found' },
         { status: 404 }
@@ -71,8 +81,10 @@ export async function PUT(request: NextRequest) {
       ...currentSettings,
       ...updates,
     };
+    console.log('Final settings after merge:', finalSettings);
 
     if (!finalSettings.facebookPageId) {
+      console.log('Facebook Page ID is required');
       return NextResponse.json(
         { error: 'Facebook Page ID is required' },
         { status: 400 }
@@ -80,6 +92,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (!finalSettings.userPrompt) {
+      console.log('Personal Details are required');
       return NextResponse.json(
         { error: 'Personal Details are required' },
         { status: 400 }
@@ -87,6 +100,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const settings = await updateUserSettings(currentSettings.id, updates);
+    console.log('Settings updated:', settings);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to update settings:', error);
