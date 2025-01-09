@@ -30,11 +30,13 @@ const toastVariants = cva(
         default: 'border bg-background text-foreground',
         destructive:
           'destructive group border-destructive bg-destructive text-destructive-foreground',
+        success:
+          'border-green-200 bg-green-50 dark:border-green-900/50 dark:bg-green-900/20 text-green-900 dark:text-green-200',
         info: 'border-yellow-200 bg-yellow-50 dark:border-yellow-900/50 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-200',
       },
     },
     defaultVariants: {
-      variant: 'info',
+      variant: 'default',
     },
   }
 );
@@ -82,7 +84,7 @@ const ToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4" />
+    <X className="w-4 h-4" />
   </ToastPrimitives.Close>
 ));
 ToastClose.displayName = ToastPrimitives.Close.displayName;

@@ -83,6 +83,7 @@ export async function PUT(request: NextRequest) {
     };
     console.log('Final settings after merge:', finalSettings);
 
+    // Validate required fields
     if (!finalSettings.facebookPageId) {
       console.log('Facebook Page ID is required');
       return NextResponse.json(
@@ -97,6 +98,31 @@ export async function PUT(request: NextRequest) {
         { error: 'Personal Details are required' },
         { status: 400 }
       );
+    }
+
+    // Validate model settings
+    if (finalSettings.aiProvider === 'openai') {
+      if (!finalSettings.openaiApiKey && finalSettings.openaiModel) {
+        console.log('Cannot set custom OpenAI model without API key');
+        return NextResponse.json(
+          {
+            error:
+              'Cannot set custom OpenAI model without providing your own API key',
+          },
+          { status: 400 }
+        );
+      }
+    } else if (finalSettings.aiProvider === 'anthropic') {
+      if (!finalSettings.anthropicApiKey && finalSettings.anthropicModel) {
+        console.log('Cannot set custom Anthropic model without API key');
+        return NextResponse.json(
+          {
+            error:
+              'Cannot set custom Anthropic model without providing your own API key',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const settings = await updateUserSettings(currentSettings.id, updates);

@@ -1,14 +1,39 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { getUserSettings } from '@/services/settingsService';
 import { LangChainService } from '@/services/langchainService';
 import { serverEnv } from '@/config/server-env';
 import { usageService } from '@/services/usageService';
 import { getCurrentModel } from '@/lib/utils/model';
 import { checkTokenLimit } from '@/lib/utils/token-limits';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // Singleton instance of LangChainService to reuse across requests
 let langChainService: LangChainService | null = null;
+
+async function ensureUser(userId: string, userEmail: string | null) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      await prisma.user.create({
+        data: {
+          id: userId,
+          email: userEmail || userId,
+          subscriptionTier: 'FREE',
+          monthlyTokens: serverEnv.freeTierTokens,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error ensuring user exists:', error);
+    throw error;
+  }
+}
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
@@ -30,6 +55,13 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    // Get user details
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress || null;
+
+    // Ensure user exists in database
+    await ensureUser(userId, userEmail);
+
     // Check token limit before proceeding
     const { canUseTokens, currentUsage, limit, remainingTokens } =
       await checkTokenLimit(userId);
@@ -38,15 +70,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Token limit exceeded',
-          details: {
+          tokenStatus: {
+            canUseTokens,
             currentUsage,
             limit,
-            remainingTokens: 0,
-            message:
-              'You have reached your monthly token limit. Please upgrade your plan to continue using the service.',
+            remainingTokens,
           },
         },
-        { status: 402 }
+        { status: 429 }
       );
     }
 
@@ -95,7 +126,21 @@ export async function POST(request: Request) {
       .streamingChat(message, async (token: string) => {
         // Check if adding this token would exceed the limit
         if (totalTokens + token.length > remainingTokens) {
-          writer.abort(new Error('Token limit reached during generation'));
+          console.log('Chat API: Token limit reached during generation');
+          await writer.write(
+            encoder.encode(
+              JSON.stringify({
+                error: 'Token limit exceeded',
+                tokenStatus: {
+                  canUseTokens: false,
+                  currentUsage: currentUsage + totalTokens,
+                  limit,
+                  remainingTokens: 0,
+                },
+              }) + '\n'
+            )
+          );
+          writer.close();
           return;
         }
         totalTokens += token.length;
@@ -117,6 +162,10 @@ export async function POST(request: Request) {
       })
       .catch(async err => {
         console.error('Chat API: Streaming error:', err);
+        if (err.message === 'Token limit reached during generation') {
+          // Already handled above
+          return;
+        }
         writer.abort(err);
 
         // Log failed attempt

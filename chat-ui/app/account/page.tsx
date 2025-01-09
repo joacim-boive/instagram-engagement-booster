@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { TokenWarnings } from '@/components/token-warnings';
+import { TokenStatus } from '@/lib/types/token-status';
+import { useToast } from '@/hooks/use-toast';
 
 const tiers = [
   {
@@ -57,17 +59,9 @@ const tiers = [
   },
 ];
 
-type TokenStatus = {
-  canUseTokens: boolean;
-  currentUsage: number;
-  limit: number;
-  remainingTokens: number;
-  isNearLimit: boolean;
-  usagePercentage: number;
-};
-
 export default function AccountPage() {
   const { user } = useUser();
+  const { toast } = useToast();
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>({
     canUseTokens: true,
     currentUsage: 0,
@@ -78,6 +72,7 @@ export default function AccountPage() {
   });
   const [currentTier, setCurrentTier] = useState('FREE');
   const [loading, setLoading] = useState(true);
+  const [updatingTier, setUpdatingTier] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -100,6 +95,11 @@ export default function AccountPage() {
         setCurrentTier(data.subscriptionTier);
       } catch (error) {
         console.error('Error fetching user data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load account data. Please try again.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
@@ -108,7 +108,65 @@ export default function AccountPage() {
     if (user) {
       fetchUserData();
     }
-  }, [user]);
+  }, [user, toast]);
+
+  const handleSubscriptionChange = async (newTier: string) => {
+    setUpdatingTier(newTier);
+    try {
+      const response = await fetch('/api/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tier: newTier,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update subscription');
+      }
+
+      const data = await response.json();
+      setCurrentTier(data.subscriptionTier);
+      toast({
+        variant: 'success',
+        title: 'Success',
+        description: `Your subscription has been updated to ${newTier.toLowerCase()}.`,
+      });
+
+      // Refresh token status
+      const accountResponse = await fetch('/api/account');
+      const accountData = await accountResponse.json();
+      const tier =
+        tiers.find(
+          t => t.name.toUpperCase() === accountData.subscriptionTier
+        ) || tiers[0];
+
+      setTokenStatus({
+        ...accountData.tokenStatus,
+        limit: tier.monthlyTokens,
+        usagePercentage:
+          (accountData.tokenStatus.currentUsage / tier.monthlyTokens) * 100,
+        canUseTokens: accountData.tokenStatus.currentUsage < tier.monthlyTokens,
+        isNearLimit:
+          accountData.tokenStatus.currentUsage / tier.monthlyTokens >= 0.8,
+      });
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to update subscription',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingTier(null);
+    }
+  };
 
   if (loading) {
     return <div className="p-8">Loading account details...</div>;
@@ -174,29 +232,20 @@ export default function AccountPage() {
                     ? 'outline'
                     : 'default'
                 }
-                disabled={tier.name.toUpperCase() === currentTier}
-                onClick={async () => {
-                  // Handle subscription change
-                  try {
-                    const response = await fetch('/api/subscription', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        tier: tier.name.toUpperCase(),
-                      }),
-                    });
-                    if (!response.ok)
-                      throw new Error('Failed to update subscription');
-                    // Refresh the page or update the UI
-                    window.location.reload();
-                  } catch (error) {
-                    console.error('Error updating subscription:', error);
-                  }
-                }}
+                disabled={
+                  tier.name.toUpperCase() === currentTier ||
+                  updatingTier === tier.name.toUpperCase()
+                }
+                onClick={() =>
+                  handleSubscriptionChange(tier.name.toUpperCase())
+                }
               >
-                {tier.name.toUpperCase() === currentTier ? (
+                {updatingTier === tier.name.toUpperCase() ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : tier.name.toUpperCase() === currentTier ? (
                   'Current Plan'
                 ) : (
                   <>

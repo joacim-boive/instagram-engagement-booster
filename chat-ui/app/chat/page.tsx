@@ -126,13 +126,34 @@ export default function ChatPage() {
               if (line.trim() === '') continue;
               try {
                 const data = JSON.parse(line);
-                fullContent += data.token;
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  const lastMessage = newMessages[newMessages.length - 1];
-                  lastMessage.content = fullContent;
-                  return newMessages;
-                });
+                if (data.error === 'Token limit exceeded') {
+                  // Update token status and show upgrade modal
+                  setTokenStatus(prev => ({
+                    ...prev!,
+                    canUseTokens: false,
+                    currentUsage: data.tokenStatus.currentUsage,
+                    remainingTokens: 0,
+                    usagePercentage: 100,
+                  }));
+                  // Update the last message to show the error
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    lastMessage.content =
+                      'Token limit exceeded. Please upgrade your plan to continue.';
+                    return newMessages;
+                  });
+                  return;
+                }
+                if (data.token) {
+                  fullContent += data.token;
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    lastMessage.content = fullContent;
+                    return newMessages;
+                  });
+                }
               } catch (e) {
                 console.warn('Failed to parse line:', line, e);
               }
@@ -143,6 +164,25 @@ export default function ChatPage() {
     } catch (error) {
       console.error('Failed to get response:', error);
       if (axios.isAxiosError(error)) {
+        const errorData = error.response?.data;
+        if (errorData?.error === 'Token limit exceeded') {
+          // Update token status and show upgrade modal
+          setTokenStatus(prev => ({
+            ...prev!,
+            canUseTokens: false,
+            currentUsage: errorData.tokenStatus.currentUsage,
+            remainingTokens: 0,
+            usagePercentage: 100,
+          }));
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            lastMessage.content =
+              'Token limit exceeded. Please upgrade your plan to continue.';
+            return newMessages;
+          });
+          return;
+        }
         console.error('Axios error details:', {
           status: error.response?.status,
           statusText: error.response?.statusText,

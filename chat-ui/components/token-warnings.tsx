@@ -2,16 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, AlertOctagon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-
-type TokenStatus = {
-  canUseTokens: boolean;
-  currentUsage: number;
-  limit: number;
-  remainingTokens: number;
-  isNearLimit: boolean;
-  usagePercentage: number;
-};
-
+import { TokenStatus } from '@/lib/types/token-status';
 interface TokenWarningsProps {
   tokenStatus: TokenStatus | null;
   className?: string;

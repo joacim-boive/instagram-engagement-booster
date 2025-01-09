@@ -27,28 +27,55 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Handle payment processing here
-    // For now, we'll just update the user's tier
+    // First check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    console.log('Current user state:', existingUser);
 
     // Update user's subscription
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: {
+    try {
+      const updateData = {
         subscriptionTier: tier,
         monthlyTokens: TIER_LIMITS[tier as keyof typeof TIER_LIMITS],
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      },
-    });
+        updatedAt: new Date(), // Ensure the updated timestamp is set
+      };
 
-    return NextResponse.json({
-      subscriptionTier: user.subscriptionTier,
-      monthlyTokens: user.monthlyTokens,
-      currentPeriodEnd: user.currentPeriodEnd,
-    });
+      console.log('Attempting to update user with data:', updateData);
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+
+      console.log('Updated user subscription:', {
+        userId,
+        tier,
+        monthlyTokens: user.monthlyTokens,
+        subscriptionTier: user.subscriptionTier,
+        beforeUpdate: existingUser,
+        afterUpdate: user,
+      });
+
+      return NextResponse.json({
+        subscriptionTier: user.subscriptionTier,
+        monthlyTokens: user.monthlyTokens,
+        currentPeriodEnd: user.currentPeriodEnd,
+      });
+    } catch (error) {
+      console.error('Database error updating subscription:', error);
+      throw new Error(
+        `Failed to update subscription in database: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   } catch (error) {
     console.error('Error in subscription API:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
       { status: 500 }
     );
   }

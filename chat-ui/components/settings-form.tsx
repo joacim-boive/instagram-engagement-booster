@@ -57,19 +57,18 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
           userPrompt: settings.userPrompt || '',
           aiProvider: settings.aiProvider || 'openai',
           openaiApiKey: settings.openaiApiKey || '',
-          openaiModel: settings.openaiModel || defaultModels.openaiModel,
+          openaiModel: settings.openaiModel || '',
           anthropicApiKey: settings.anthropicApiKey || '',
-          anthropicModel:
-            settings.anthropicModel || defaultModels.anthropicModel,
+          anthropicModel: settings.anthropicModel || '',
         }
       : {
           facebookPageId: '',
           userPrompt: '',
           aiProvider: 'openai',
           openaiApiKey: '',
-          openaiModel: defaultModels.openaiModel,
+          openaiModel: '',
           anthropicApiKey: '',
-          anthropicModel: defaultModels.anthropicModel,
+          anthropicModel: '',
         },
   });
 
@@ -84,9 +83,9 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
         userPrompt: settings.userPrompt || '',
         aiProvider: settings.aiProvider || 'openai',
         openaiApiKey: settings.openaiApiKey || '',
-        openaiModel: settings.openaiModel || defaultModels.openaiModel,
+        openaiModel: settings.openaiModel || '',
         anthropicApiKey: settings.anthropicApiKey || '',
-        anthropicModel: settings.anthropicModel || defaultModels.anthropicModel,
+        anthropicModel: settings.anthropicModel,
       };
       console.log('Form data to set:', formData);
       form.reset(formData);
@@ -111,10 +110,9 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
       }
       await refreshSettings();
       toast({
+        variant: 'success',
         title: 'Settings saved',
         description: 'Your settings have been updated successfully.',
-        duration: 3000,
-        variant: 'info',
       });
       onClose();
     } catch (error) {
@@ -219,8 +217,14 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                 Personal Details <span className="text-red-500">*</span>
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                    <TooltipTrigger asChild onClick={e => e.preventDefault()}>
+                      <button
+                        type="button"
+                        className="hover:opacity-80"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -289,7 +293,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      type="password"
+                      type="text"
                       placeholder="Leave empty to use system default"
                       disabled={isSubmitting}
                     />
@@ -312,13 +316,21 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="Leave empty to use system default"
-                      disabled={isSubmitting}
+                      placeholder={defaultModels.openaiModel}
+                      disabled={isSubmitting || !form.watch('openaiApiKey')}
+                      onChange={e => {
+                        if (!form.watch('openaiApiKey')) {
+                          e.preventDefault();
+                          return;
+                        }
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                   <p className="text-sm text-muted-foreground">
-                    The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to
-                    use the system default model.
+                    {!form.watch('openaiApiKey')
+                      ? 'Provide your OpenAI API key to customize the model'
+                      : 'The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to use the system default model.'}
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -338,7 +350,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      type="password"
+                      type="text"
                       placeholder="Leave empty to use system default"
                       disabled={isSubmitting}
                     />
@@ -361,13 +373,21 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="Leave empty to use system default"
-                      disabled={isSubmitting}
+                      placeholder={defaultModels.anthropicModel}
+                      disabled={isSubmitting || !form.watch('anthropicApiKey')}
+                      onChange={e => {
+                        if (!form.watch('anthropicApiKey')) {
+                          e.preventDefault();
+                          return;
+                        }
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                   <p className="text-sm text-muted-foreground">
-                    The Anthropic model to use (e.g., claude-3-sonnet-20241022).
-                    Leave empty to use the system default model.
+                    {!form.watch('anthropicApiKey')
+                      ? 'Provide your Anthropic API key to customize the model'
+                      : 'The Anthropic model to use (e.g., claude-3-5-haiku-20241022). Leave empty to use the system default model.'}
                   </p>
                   <FormMessage />
                 </FormItem>
