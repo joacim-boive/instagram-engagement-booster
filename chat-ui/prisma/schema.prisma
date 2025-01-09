@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model UsageLog {
+  id           String   @id @default(cuid())
+  userId       String
+  timestamp    DateTime @default(now())
+  model        String
+  tokens       Int
+  responseTime Int
+  success      Boolean
+  error        String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model User {
+  id                String    @id
+  email            String    @unique
+  currentPeriodEnd DateTime?
+  subscriptionId   String?
+  subscriptionTier String    @default("FREE")
+  usageLogs        UsageLog[]
+  monthlyTokens    Int       @default(100) // Free tier default
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([subscriptionTier])
+}
+
+// Subscription tiers configuration
+model SubscriptionTier {
+  id            String   @id @default(cuid())
+  name          String   @unique // FREE, PRO, ENTERPRISE
+  monthlyTokens Int      // Token limit per month
+  price         Float    // Monthly price in USD
+  features      String   // JSON string of features
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+}

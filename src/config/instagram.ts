@@ -21,7 +21,6 @@ export const instagramConfig: InstagramConfig = {
 if (!instagramConfig.accessToken) {
   throw new Error('FACEBOOK_ACCESS_TOKEN is required in .env file');
 }
-
 if (!instagramConfig.pageId) {
   throw new Error('FACEBOOK_PAGE_ID is required in .env file');
-} 
+}
