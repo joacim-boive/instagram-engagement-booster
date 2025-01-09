@@ -23,7 +23,35 @@ model UsageLog {
   success      Boolean
   error        String?
   createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([timestamp])
+}
+
+model User {
+  id                String    @id
+  email            String    @unique
+  currentPeriodEnd DateTime?
+  subscriptionId   String?
+  subscriptionTier String    @default("FREE")
+  usageLogs        UsageLog[]
+  monthlyTokens    Int       @default(100) // Free tier default
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([subscriptionTier])
+}
+
+// Subscription tiers configuration
+model SubscriptionTier {
+  id            String   @id @default(cuid())
+  name          String   @unique // FREE, PRO, ENTERPRISE
+  monthlyTokens Int      // Token limit per month
+  price         Float    // Monthly price in USD
+  features      String   // JSON string of features
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
 }

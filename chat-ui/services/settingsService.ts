@@ -44,10 +44,13 @@ export async function getUserSettings(): Promise<UserSettings | null> {
   try {
     const fileContent = await fs.readFile(filePath, 'utf-8');
     const settings = JSON.parse(fileContent);
-    // Handle both array and single object formats
-    if (Array.isArray(settings)) {
-      return settings[0] || null;
+
+    // Validate that the settings belong to the current user
+    if (settings.userId !== userId) {
+      console.error('Settings file exists but belongs to different user');
+      return null;
     }
+
     return settings;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

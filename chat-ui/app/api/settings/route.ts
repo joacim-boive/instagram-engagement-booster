@@ -29,14 +29,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    if (!body.userPrompt) {
-      return NextResponse.json(
-        { error: 'Personal Details are required' },
-        { status: 400 }
-      );
-    }
+    // For initial settings creation, don't require all fields
+    const settings = await createUserSettings(name, {
+      ...otherSettings,
+      aiProvider: otherSettings.aiProvider || 'openai',
+      userPrompt: otherSettings.userPrompt || '',
+    });
 
-    const settings = await createUserSettings(name, otherSettings);
     return NextResponse.json(settings);
   } catch (error) {
     if (

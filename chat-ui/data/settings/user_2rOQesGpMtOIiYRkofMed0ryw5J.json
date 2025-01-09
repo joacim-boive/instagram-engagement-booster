@@ -1,0 +1,14 @@
+{
+  "id": "e2ec1638-2691-42c7-b395-bbc9d25e252f",
+  "userId": "user_2rOQesGpMtOIiYRkofMed0ryw5J",
+  "name": "Default Configuration",
+  "aiProvider": "openai",
+  "userPrompt": "Logged in with email",
+  "createdAt": "2025-01-09T13:10:59.312Z",
+  "updatedAt": "2025-01-09T13:14:04.116Z",
+  "facebookPageId": "423406794855201",
+  "openaiApiKey": "",
+  "openaiModel": "gpt-4o-mini",
+  "anthropicApiKey": "",
+  "anthropicModel": "claude-3-opus-20240229"
+}

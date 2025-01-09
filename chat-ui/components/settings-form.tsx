@@ -67,11 +67,22 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
       form.reset({
         facebookPageId: settings.facebookPageId || '',
         userPrompt: settings.userPrompt || '',
-        aiProvider: settings.aiProvider,
+        aiProvider: settings.aiProvider || 'openai',
         openaiApiKey: settings.openaiApiKey || '',
         openaiModel: settings.openaiModel || defaultModels.openaiModel,
         anthropicApiKey: settings.anthropicApiKey || '',
         anthropicModel: settings.anthropicModel || defaultModels.anthropicModel,
+      });
+    } else {
+      // Reset to default values when no settings exist
+      form.reset({
+        facebookPageId: '',
+        userPrompt: '',
+        aiProvider: 'openai',
+        openaiApiKey: '',
+        openaiModel: defaultModels.openaiModel,
+        anthropicApiKey: '',
+        anthropicModel: defaultModels.anthropicModel,
       });
     }
   }, [settings, form]);

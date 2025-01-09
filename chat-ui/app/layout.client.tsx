@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, BarChart3 } from 'lucide-react';
+import { MessageSquare, BarChart3, UserCircle2 } from 'lucide-react';
 import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -16,6 +16,7 @@ const inter = Inter({ subsets: ['latin'] });
 const navigation = [
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Statistics', href: '/stats', icon: BarChart3 },
+  { name: 'Account', href: '/account', icon: UserCircle2 },
 ];
 
 export default function ClientLayout({
