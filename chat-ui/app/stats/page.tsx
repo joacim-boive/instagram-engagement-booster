@@ -20,10 +20,88 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
 } from 'recharts';
 import type { StatsResponse } from '../api/stats/route';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+
+type SparklineData = {
+  date: string;
+  value: number;
+};
+
+type DailyStats = {
+  tokens: number;
+  requests: number;
+  successfulRequests: number;
+  totalResponseTime: number;
+};
+
+type LogEntry = {
+  date: string;
+  tokens: number;
+  success: boolean;
+  responseTime: number;
+};
+
+function SparklineCard({
+  title,
+  value,
+  description,
+  data,
+  dataKey,
+  color = '#8884d8',
+}: {
+  title: string;
+  value: string | number;
+  description: string;
+  data: SparklineData[];
+  dataKey: 'value';
+  color?: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[60px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={data}
+              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient
+                  id={`gradient-${title}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey={dataKey}
+                stroke={color}
+                fillOpacity={1}
+                fill={`url(#gradient-${title})`}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function StatsPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -61,6 +139,57 @@ export default function StatsPage() {
     );
   }
 
+  // Transform raw data into daily stats
+  const dailyStats = (stats.usageOverTime as LogEntry[]).reduce(
+    (acc: Map<string, DailyStats>, log) => {
+      const date = log.date;
+      if (!acc.has(date)) {
+        acc.set(date, {
+          tokens: 0,
+          requests: 0,
+          successfulRequests: 0,
+          totalResponseTime: 0,
+        });
+      }
+      const day = acc.get(date)!;
+      day.tokens += log.tokens;
+      day.requests += 1;
+      day.successfulRequests += log.success ? 1 : 0;
+      day.totalResponseTime += log.responseTime || 0;
+      return acc;
+    },
+    new Map()
+  );
+
+  // Convert daily stats into our SparklineData format
+  const tokenUsageData: SparklineData[] = Array.from(dailyStats.entries()).map(
+    ([date, day]) => ({
+      date,
+      value: day.tokens,
+    })
+  );
+
+  const dailySuccessRates: SparklineData[] = Array.from(
+    dailyStats.entries()
+  ).map(([date, day]) => ({
+    date,
+    value: (day.successfulRequests / day.requests) * 100,
+  }));
+
+  const dailyResponseTimes: SparklineData[] = Array.from(
+    dailyStats.entries()
+  ).map(([date, day]) => ({
+    date,
+    value: day.totalResponseTime / day.requests,
+  }));
+
+  const conversationData: SparklineData[] = Array.from(
+    dailyStats.entries()
+  ).map(([date, day]) => ({
+    date,
+    value: day.requests,
+  }));
+
   return (
     <div className="flex-1 p-8 pt-6 space-y-4">
       <div className="flex items-center justify-between space-y-2">
@@ -74,64 +203,38 @@ export default function StatsPage() {
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Total Tokens Used
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.totalTokens.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Across all conversations
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Total Conversations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.totalConversations.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Total chat sessions
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Average Response Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.averageResponseTime}ms
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Response latency
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Success Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.successRate}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Request success rate
-                </p>
-              </CardContent>
-            </Card>
+            <SparklineCard
+              title="Total Tokens Used"
+              value={stats.totalTokens.toLocaleString()}
+              description="Token usage over time"
+              data={tokenUsageData}
+              dataKey="value"
+              color="#8884d8"
+            />
+            <SparklineCard
+              title="Total Conversations"
+              value={stats.totalConversations.toLocaleString()}
+              description="Conversation count over time"
+              data={conversationData}
+              dataKey="value"
+              color="#82ca9d"
+            />
+            <SparklineCard
+              title="Average Response Time"
+              value={`${stats.averageResponseTime.toFixed(0)}ms`}
+              description="Response latency trend"
+              data={dailyResponseTimes}
+              dataKey="value"
+              color="#ffc658"
+            />
+            <SparklineCard
+              title="Success Rate"
+              value={`${stats.successRate.toFixed(1)}%`}
+              description="Success rate trend"
+              data={dailySuccessRates}
+              dataKey="value"
+              color="#ff8042"
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4">

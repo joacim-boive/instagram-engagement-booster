@@ -3,12 +3,15 @@ import { auth } from '@clerk/nextjs/server';
 import { getUserSettings } from '@/services/settingsService';
 import { LangChainService } from '@/services/langchainService';
 import { serverEnv } from '@/config/server-env';
+import { usageService } from '@/services/usageService';
+import { getCurrentModel } from '@/lib/utils/model';
 
 // Singleton instance of LangChainService to reuse across requests
 let langChainService: LangChainService | null = null;
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
+  const startTime = Date.now();
 
   try {
     console.log('Chat API: Received request');
@@ -64,19 +67,43 @@ export async function POST(request: Request) {
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
 
+    let totalTokens = 0;
+
     console.log('Chat API: Starting streaming response');
     // Start generating the response in the background
     langChainService
       .streamingChat(message, async (token: string) => {
+        totalTokens += token.length;
         await writer.write(encoder.encode(JSON.stringify({ token }) + '\n'));
       })
-      .then(() => {
+      .then(async () => {
         console.log('Chat API: Streaming completed');
         writer.close();
+
+        // Log usage statistics
+        const responseTime = Date.now() - startTime;
+        await usageService.logUsage({
+          userId,
+          model: getCurrentModel(settings),
+          tokens: totalTokens,
+          responseTime,
+          success: true,
+        });
       })
-      .catch(error => {
-        console.error('Chat API: Streaming error:', error);
-        writer.abort(error);
+      .catch(async err => {
+        console.error('Chat API: Streaming error:', err);
+        writer.abort(err);
+
+        // Log failed attempt
+        const responseTime = Date.now() - startTime;
+        await usageService.logUsage({
+          userId,
+          model: getCurrentModel(settings),
+          tokens: totalTokens,
+          responseTime,
+          success: false,
+          error: err.message,
+        });
       });
 
     console.log('Chat API: Returning stream response');
@@ -89,6 +116,18 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error in chat API:', error);
+
+    // Log error
+    const responseTime = Date.now() - startTime;
+    await usageService.logUsage({
+      userId: (await auth())?.userId || 'unknown',
+      model: 'unknown',
+      tokens: 0,
+      responseTime,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
