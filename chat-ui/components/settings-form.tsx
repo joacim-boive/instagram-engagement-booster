@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, HelpCircle, Facebook } from 'lucide-react';
+import { Loader2, HelpCircle, Facebook, Instagram } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -53,6 +53,8 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
     resolver: zodResolver(settingsSchema),
     defaultValues: settings
       ? {
+          instagramPageId: settings.instagramPageId || '',
+          instagramAccessToken: settings.instagramAccessToken || '',
           facebookPageId: settings.facebookPageId || '',
           userPrompt: settings.userPrompt || '',
           aiProvider: settings.aiProvider || 'openai',
@@ -62,6 +64,8 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
           anthropicModel: settings.anthropicModel || '',
         }
       : {
+          instagramPageId: '',
+          instagramAccessToken: '',
           facebookPageId: '',
           userPrompt: '',
           aiProvider: 'openai',
@@ -79,6 +83,8 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
     if (settings) {
       console.log('Resetting form with settings:', settings);
       const formData = {
+        instagramPageId: settings.instagramPageId || '',
+        instagramAccessToken: settings.instagramAccessToken || '',
         facebookPageId: settings.facebookPageId || '',
         userPrompt: settings.userPrompt || '',
         aiProvider: settings.aiProvider || 'openai',
@@ -129,6 +135,117 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Instagram Connection</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex-grow">
+              {form.watch('instagramPageId') ? (
+                <div className="text-sm text-muted-foreground">
+                  Connected to Instagram Page: {form.watch('instagramPageId')}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter your Instagram handle (e.g. jboive)"
+                    onChange={e =>
+                      form.setValue('instagramHandle', e.target.value)
+                    }
+                    className="flex-grow"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      const handle = form.watch('instagramHandle');
+                      if (!handle) {
+                        toast({
+                          title: 'Error',
+                          description: 'Please enter your Instagram handle',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+
+                      try {
+                        const response = await axios.post(
+                          '/api/auth/instagram/init',
+                          {
+                            handle,
+                          }
+                        );
+                        window.open(
+                          response.data.authUrl,
+                          '_blank',
+                          'width=600,height=800'
+                        );
+
+                        // Poll for completion
+                        const interval = setInterval(async () => {
+                          try {
+                            const statusResponse = await axios.get(
+                              '/api/auth/instagram/status'
+                            );
+                            if (
+                              statusResponse.data.pageId &&
+                              statusResponse.data.accessToken
+                            ) {
+                              clearInterval(interval);
+                              form.setValue(
+                                'instagramPageId',
+                                statusResponse.data.pageId
+                              );
+                              form.setValue(
+                                'instagramAccessToken',
+                                statusResponse.data.accessToken
+                              );
+                              toast({
+                                title: 'Success',
+                                description:
+                                  'Instagram connected successfully.',
+                                variant: 'info',
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Error checking auth status:', error);
+                          }
+                        }, 2000);
+
+                        // Clear interval after 2 minutes
+                        setTimeout(() => clearInterval(interval), 120000);
+                      } catch (error) {
+                        console.error('Error connecting to Instagram:', error);
+                        toast({
+                          title: 'Error',
+                          description:
+                            'Failed to connect to Instagram. Please try again.',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    <Instagram className="w-4 h-4 mr-2" />
+                    Connect
+                  </Button>
+                </div>
+              )}
+            </div>
+            {form.watch('instagramPageId') && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  form.setValue('instagramPageId', '');
+                  form.setValue('instagramAccessToken', '');
+                  form.setValue('instagramHandle', '');
+                }}
+              >
+                <Instagram className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+            )}
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="facebookPageId"

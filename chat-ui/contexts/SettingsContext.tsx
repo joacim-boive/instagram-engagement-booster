@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -33,7 +34,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const initializeDefaultSettings = async () => {
+  const initializeDefaultSettings = useCallback(async () => {
     if (!userId) return;
 
     try {
@@ -50,9 +51,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
 
-  const refreshSettings = async () => {
+  const refreshSettings = useCallback(async () => {
     if (!isSignedIn || !userId) {
       console.log('No user signed in, clearing settings');
       setSettings(null);
@@ -85,14 +86,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isSignedIn, userId, initializeDefaultSettings]);
 
   useEffect(() => {
     console.log('Auth state changed:', { isLoaded, isSignedIn, userId });
     if (isLoaded && isSignedIn) {
       refreshSettings();
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, refreshSettings, userId]);
 
   const isValid = isSettingsValid(settings);
   console.log('Current settings state:', { settings, isValid, isLoading });

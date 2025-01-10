@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { auth } from '@clerk/nextjs/server';
 import { getMetaPageId, setMetaPageId } from '../shared';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,10 +13,17 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
+    const state = searchParams.get('state');
 
-    if (!code) {
-      return NextResponse.json({ error: 'No code provided' }, { status: 400 });
+    if (!code || !state) {
+      return NextResponse.json(
+        { error: 'Missing required parameters' },
+        { status: 400 }
+      );
     }
+
+    const isInstagram = state.startsWith('instagram_');
+    const actualUserId = isInstagram ? state.replace('instagram_', '') : userId;
 
     // Exchange code for access token
     const tokenResponse = await axios.get(
@@ -61,27 +69,58 @@ export async function GET(request: NextRequest) {
 
     console.log('Pages response:', pagesResponse.data);
 
-    const pageId = pagesResponse.data.data[0]?.id;
-    if (!pageId) {
+    const page = pagesResponse.data.data[0];
+    if (!page?.id) {
       console.error('No page ID found in response');
       throw new Error('No page ID found');
     }
 
-    // Store in shared state
-    console.log('Setting page ID:', pageId);
-    setMetaPageId(pageId);
+    if (isInstagram) {
+      // Get Instagram business account ID for the page
+      const pageResponse = await axios.get(
+        `https://graph.facebook.com/v21.0/${page.id}`,
+        {
+          params: {
+            fields: 'instagram_business_account',
+            access_token: page.access_token,
+          },
+        }
+      );
 
-    return new Response('<script>window.close();</script>', {
-      headers: {
-        'Content-Type': 'text/html',
-      },
-    });
+      const instagramAccountId =
+        pageResponse.data?.instagram_business_account?.id;
+      if (!instagramAccountId) {
+        return new NextResponse('No Instagram business account found', {
+          status: 400,
+        });
+      }
+
+      // Store Instagram info
+      await prisma.user.update({
+        where: { id: actualUserId },
+        data: {
+          instagramAccessToken: page.access_token,
+          instagramPageId: instagramAccountId,
+        },
+      });
+
+      return new Response(
+        '<script>window.opener.postMessage("instagram_success", "*"); window.close();</script>',
+        {
+          headers: { 'Content-Type': 'text/html' },
+        }
+      );
+    } else {
+      // Regular Meta auth flow
+      setMetaPageId(page.id);
+      return new Response('<script>window.close();</script>', {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
   } catch (error) {
     console.error('Error in Meta callback:', error);
     return new Response('<script>window.close();</script>', {
-      headers: {
-        'Content-Type': 'text/html',
-      },
+      headers: { 'Content-Type': 'text/html' },
     });
   }
 }

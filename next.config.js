@@ -47,6 +47,22 @@ const nextConfig = {
     // number of pages that should be kept simultaneously without being disposed
     pagesBufferLength: 5,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'scontent-arn2-1.cdninstagram.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'scontent.cdninstagram.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
