@@ -3,6 +3,7 @@ export type UserSettings = {
   userId: string;
   name: string;
   instagramPageId?: string;
+  instagramHandle?: string;
   instagramAccessToken?: string;
   facebookPageId?: string;
   userPrompt: string;
