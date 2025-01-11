@@ -1,24 +1,13 @@
 'use client';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 
-type SettingsWarningProps = {
-  onOpenSettings: () => void;
-};
-
-export function SettingsWarning({ onOpenSettings }: SettingsWarningProps) {
+export function SettingsWarning() {
   return (
     <Alert variant="destructive">
       <AlertTitle>Missing Required Settings</AlertTitle>
-      <AlertDescription className="flex items-center justify-between">
-        <span>
-          Please configure your Facebook Page ID and Personal Details in
-          settings
-        </span>
-        <Button variant="destructive" size="sm" onClick={onOpenSettings}>
-          Configure Settings
-        </Button>
+      <AlertDescription>
+        Please configure your Facebook Page ID and Personal Details in settings
       </AlertDescription>
     </Alert>
   );

@@ -30,9 +30,9 @@ export function TokenLimitModal({
           </AlertDialogTitle>
           <div className="space-y-4">
             <AlertDialogDescription>
-              You&apos;ve used {currentUsage.toLocaleString()} tokens out of
-              your {limit.toLocaleString()} token limit. Please upgrade your
-              plan to continue using the service.
+              You&apos;ve used {currentUsage?.toLocaleString() || '0'} tokens
+              out of your {limit.toLocaleString()} token limit. Please upgrade
+              your plan to continue using the service.
             </AlertDialogDescription>
             <div className="flex justify-center">
               <Button asChild>

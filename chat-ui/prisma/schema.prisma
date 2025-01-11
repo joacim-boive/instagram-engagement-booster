@@ -30,7 +30,7 @@ model UsageLog {
 }
 
 model User {
-  id                String    @id
+  id                String    @id @default(cuid())
   email            String    @unique
   currentPeriodEnd DateTime?
   subscriptionId   String?
@@ -38,6 +38,7 @@ model User {
   usageLogs        UsageLog[]
   monthlyTokens    Int       @default(100) // Free tier default
   instagramPageId      String?
+  instagramHandle     String?
   instagramAccessToken String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

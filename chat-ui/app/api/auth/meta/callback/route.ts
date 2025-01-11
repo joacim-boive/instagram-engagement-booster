@@ -13,17 +13,23 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
+
+    // For Meta auth, we don't always need the state parameter
     const state = searchParams.get('state');
 
-    if (!code || !state) {
+    console.log('Auth params:', { code, state, userId });
+
+    if (!code) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: 'Missing authorization code' },
         { status: 400 }
       );
     }
 
-    const isInstagram = state.startsWith('instagram_');
-    const actualUserId = isInstagram ? state.replace('instagram_', '') : userId;
+    // If state is present and starts with instagram_, use it for Instagram flow
+    const isInstagram = state?.startsWith('instagram_');
+    const actualUserId =
+      isInstagram && state ? state.replace('instagram_', '') : userId;
 
     // Exchange code for access token
     const tokenResponse = await axios.get(
@@ -119,9 +125,12 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error in Meta callback:', error);
-    return new Response('<script>window.close();</script>', {
-      headers: { 'Content-Type': 'text/html' },
-    });
+    return new Response(
+      '<script>window.opener.postMessage("auth_error", "*"); window.close();</script>',
+      {
+        headers: { 'Content-Type': 'text/html' },
+      }
+    );
   }
 }
 

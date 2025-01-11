@@ -1,17 +1,23 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { UserService } from '@/services/userService';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the user's data from the database
+    // Ensure user exists in database
+    await UserService.ensureUser();
+
+    // Get user's token usage for the current month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get user and their subscription info
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -20,14 +26,8 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    console.log('Account API: Retrieved user data:', user);
-
-    // Get the user's current usage from the database
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const currentMonthUsage = await prisma.usageLog.aggregate({
+    // Get total token usage for the current month
+    const tokenUsage = await prisma.usageLog.aggregate({
       where: {
         userId,
         timestamp: {
@@ -39,37 +39,16 @@ export async function GET() {
       },
     });
 
-    const currentUsage = currentMonthUsage._sum.tokens || 0;
-    const limit = user.monthlyTokens;
-    const remainingTokens = Math.max(0, limit - currentUsage);
-    const usagePercentage = (currentUsage / limit) * 100;
-    const isNearLimit = usagePercentage >= 80;
-
-    console.log('Account API: Calculated token status:', {
-      currentUsage,
-      limit,
-      remainingTokens,
-      usagePercentage,
-      isNearLimit,
-    });
-
     return NextResponse.json({
       subscriptionTier: user.subscriptionTier,
-      monthlyTokens: user.monthlyTokens,
-      currentPeriodEnd: user.currentPeriodEnd,
       tokenStatus: {
-        canUseTokens: currentUsage < limit,
-        currentUsage,
-        limit,
-        remainingTokens,
-        isNearLimit,
-        usagePercentage,
+        currentUsage: tokenUsage._sum.tokens || 0,
       },
     });
   } catch (error) {
     console.error('Error fetching account info:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch account information' },
       { status: 500 }
     );
   }

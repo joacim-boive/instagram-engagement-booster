@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { UserService } from '@/services/userService';
 
 const TIER_LIMITS = {
   FREE: 100,
   PRO: 1000,
   ENTERPRISE: 10000,
-};
+} as const;
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +15,9 @@ export async function POST(request: Request) {
     if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
+
+    // Ensure user exists in database
+    await UserService.ensureUser();
 
     const body = await request.json();
     const { tier } = body;
@@ -26,13 +28,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    // First check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    console.log('Current user state:', existingUser);
 
     // Update user's subscription
     try {
@@ -55,8 +50,6 @@ export async function POST(request: Request) {
         tier,
         monthlyTokens: user.monthlyTokens,
         subscriptionTier: user.subscriptionTier,
-        beforeUpdate: existingUser,
-        afterUpdate: user,
       });
 
       return NextResponse.json({

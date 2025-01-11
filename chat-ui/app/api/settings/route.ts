@@ -5,7 +5,7 @@ import {
   updateUserSettings,
   deleteUserSettings,
 } from '@/services/settingsService';
-import type { UserSettings } from '@/services/settingsService';
+import type { UserSettings } from '@/types/settings';
 
 export async function GET() {
   try {

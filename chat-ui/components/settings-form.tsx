@@ -79,22 +79,18 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
   const { isSubmitting } = form.formState;
 
   useEffect(() => {
-    console.log('Settings changed in form:', settings);
     if (settings) {
-      console.log('Resetting form with settings:', settings);
-      const formData = {
-        instagramPageId: settings.instagramPageId || '',
-        instagramAccessToken: settings.instagramAccessToken || '',
-        facebookPageId: settings.facebookPageId || '',
-        userPrompt: settings.userPrompt || '',
-        aiProvider: settings.aiProvider || 'openai',
-        openaiApiKey: settings.openaiApiKey || '',
-        openaiModel: settings.openaiModel || '',
-        anthropicApiKey: settings.anthropicApiKey || '',
-        anthropicModel: settings.anthropicModel,
-      };
-      console.log('Form data to set:', formData);
-      form.reset(formData);
+      form.reset({
+        aiProvider: settings.aiProvider,
+        userPrompt: settings.userPrompt,
+        openaiApiKey: settings.openaiApiKey,
+        openaiModel: settings.openaiModel,
+        anthropicApiKey: settings.anthropicApiKey,
+        instagramPageId: settings.instagramPageId,
+        instagramHandle: settings.instagramHandle,
+        instagramAccessToken: settings.instagramAccessToken,
+        facebookPageId: settings.facebookPageId,
+      });
     }
   }, [settings, form]);
 
@@ -141,7 +137,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
             <div className="flex-grow">
               {form.watch('instagramPageId') ? (
                 <div className="text-sm text-muted-foreground">
-                  Connected to Instagram Page: {form.watch('instagramPageId')}
+                  Connected to Instagram: @{form.watch('instagramHandle')}
                 </div>
               ) : (
                 <div className="flex gap-2">
@@ -150,6 +146,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                     onChange={e =>
                       form.setValue('instagramHandle', e.target.value)
                     }
+                    value={form.watch('instagramHandle') || ''}
                     className="flex-grow"
                   />
                   <Button
@@ -185,24 +182,17 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                             const statusResponse = await axios.get(
                               '/api/auth/instagram/status'
                             );
-                            if (
-                              statusResponse.data.pageId &&
-                              statusResponse.data.accessToken
-                            ) {
+                            if (statusResponse.data.pageId) {
                               clearInterval(interval);
                               form.setValue(
                                 'instagramPageId',
                                 statusResponse.data.pageId
                               );
-                              form.setValue(
-                                'instagramAccessToken',
-                                statusResponse.data.accessToken
-                              );
                               toast({
                                 title: 'Success',
                                 description:
                                   'Instagram connected successfully.',
-                                variant: 'info',
+                                variant: 'success',
                               });
                             }
                           } catch (error) {
@@ -291,7 +281,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                               title: 'Success',
                               description:
                                 'Facebook Page ID retrieved successfully.',
-                              variant: 'info',
+                              variant: 'success',
                             });
                           }
                         } catch (error) {
