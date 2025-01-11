@@ -1,6 +1,6 @@
 'use client';
 
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import { SignedIn, SignedOut, RedirectToSignIn, useAuth } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
@@ -59,6 +59,7 @@ const tiers: Tier[] = [
 ];
 
 export default function AccountPage() {
+  const { isLoaded: isAuthLoaded, userId } = useAuth();
   const { toast } = useToast();
   const [currentTier, setCurrentTier] = useState('FREE');
   const [isLoading, setIsLoading] = useState(true);
@@ -96,10 +97,15 @@ export default function AccountPage() {
       }
     };
 
-    fetchAccountInfo();
-  }, [toast]);
+    // Only fetch if auth is loaded and we have a userId
+    if (isAuthLoaded && userId) {
+      fetchAccountInfo();
+    }
+  }, [toast, isAuthLoaded, userId]);
 
   const handleUpgrade = async (newTier: string) => {
+    if (!isAuthLoaded || !userId) return;
+
     setUpdatingTier(newTier);
     try {
       const response = await fetch('/api/subscription', {
@@ -126,7 +132,9 @@ export default function AccountPage() {
       toast({
         variant: 'success',
         title: 'Success',
-        description: `Your subscription has been ${isDowngrade ? 'downgraded' : 'upgraded'} to ${newTier.toLowerCase()}.`,
+        description: `Your subscription has been ${
+          isDowngrade ? 'downgraded' : 'upgraded'
+        } to ${newTier.toLowerCase()}.`,
       });
 
       // Refresh token status
@@ -157,7 +165,8 @@ export default function AccountPage() {
     }
   };
 
-  if (isLoading) {
+  // Show loading state while auth is loading
+  if (!isAuthLoaded || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Spinner className="w-8 h-8" />

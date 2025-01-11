@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ import {
   Area,
 } from 'recharts';
 import type { StatsResponse } from '../api/stats/route';
+import { Spinner } from '@/components/ui/spinner';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
@@ -104,6 +106,7 @@ function SparklineCard({
 }
 
 export default function StatsPage() {
+  const { isLoaded: isAuthLoaded, userId } = useAuth();
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -120,13 +123,15 @@ export default function StatsPage() {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (isAuthLoaded && userId) {
+      fetchStats();
+    }
+  }, [isAuthLoaded, userId]);
 
-  if (loading) {
+  if (!isAuthLoaded || loading) {
     return (
-      <div className="flex-1 p-8 pt-6 space-y-4">
-        <div className="text-center">Loading statistics...</div>
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="w-8 h-8" />
       </div>
     );
   }

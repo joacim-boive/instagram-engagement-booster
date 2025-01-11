@@ -1,9 +1,20 @@
 'use client';
 
 import { InstagramPanel } from '@/components/instagram/instagram-panel';
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import { SignedIn, SignedOut, RedirectToSignIn, useAuth } from '@clerk/nextjs';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function InstagramPage() {
+  const { isLoaded: isAuthLoaded } = useAuth();
+
+  if (!isAuthLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="w-8 h-8" />
+      </div>
+    );
+  }
+
   return (
     <>
       <SignedIn>
