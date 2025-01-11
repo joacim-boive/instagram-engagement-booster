@@ -1,27 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useState } from 'react';
+import { Spinner } from '@/components/ui/spinner';
+import { TokenUsageChart } from '@/components/token-usage-chart';
 import { Check, Loader2 } from 'lucide-react';
-import { TokenWarnings } from '@/components/token-warnings';
-import { TokenStatus } from '@/lib/types/token-status';
 import { useToast } from '@/hooks/use-toast';
 
-const tiers = [
+type Tier = {
+  name: string;
+  monthlyTokens: number;
+  price: number;
+  features: string[];
+};
+
+const tiers: Tier[] = [
   {
     name: 'Free',
-    price: 0,
     monthlyTokens: 100,
+    price: 0,
     features: [
       'Up to 100 tokens per month',
       'Basic response generation',
@@ -31,8 +30,8 @@ const tiers = [
   },
   {
     name: 'Pro',
-    price: 29,
     monthlyTokens: 1000,
+    price: 29,
     features: [
       'Up to 1,000 tokens per month',
       'Advanced response generation',
@@ -44,8 +43,8 @@ const tiers = [
   },
   {
     name: 'Enterprise',
-    price: 99,
     monthlyTokens: 10000,
+    price: 99,
     features: [
       'Up to 10,000 tokens per month',
       'Advanced response generation',
@@ -60,57 +59,47 @@ const tiers = [
 ];
 
 export default function AccountPage() {
-  const { user } = useUser();
   const { toast } = useToast();
-  const [tokenStatus, setTokenStatus] = useState<TokenStatus>({
-    canUseTokens: true,
-    currentUsage: 0,
-    limit: 100,
-    remainingTokens: 100,
-    isNearLimit: false,
-    usagePercentage: 0,
-  });
   const [currentTier, setCurrentTier] = useState('FREE');
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [updatingTier, setUpdatingTier] = useState<string | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<{
+    currentUsage: number;
+    limit: number;
+    usagePercentage: number;
+  } | null>(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchAccountInfo = async () => {
       try {
         const response = await fetch('/api/account');
         const data = await response.json();
+        setCurrentTier(data.subscriptionTier);
         const tier =
           tiers.find(t => t.name.toUpperCase() === data.subscriptionTier) ||
           tiers[0];
-
         setTokenStatus({
-          ...data.tokenStatus,
+          currentUsage: data.tokenStatus.currentUsage,
           limit: tier.monthlyTokens,
           usagePercentage:
             (data.tokenStatus.currentUsage / tier.monthlyTokens) * 100,
-          canUseTokens: data.tokenStatus.currentUsage < tier.monthlyTokens,
-          isNearLimit:
-            data.tokenStatus.currentUsage / tier.monthlyTokens >= 0.8,
         });
-        setCurrentTier(data.subscriptionTier);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching account info:', error);
         toast({
           title: 'Error',
           description: 'Failed to load account data. Please try again.',
           variant: 'destructive',
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    if (user) {
-      fetchUserData();
-    }
-  }, [user, toast]);
+    fetchAccountInfo();
+  }, [toast]);
 
-  const handleSubscriptionChange = async (newTier: string) => {
+  const handleUpgrade = async (newTier: string) => {
     setUpdatingTier(newTier);
     try {
       const response = await fetch('/api/subscription', {
@@ -118,9 +107,7 @@ export default function AccountPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          tier: newTier,
-        }),
+        body: JSON.stringify({ tier: newTier }),
       });
 
       if (!response.ok) {
@@ -129,11 +116,17 @@ export default function AccountPage() {
       }
 
       const data = await response.json();
+      const isDowngrade =
+        (tiers.find(t => t.name.toUpperCase() === newTier)?.monthlyTokens ||
+          0) <
+        (tiers.find(t => t.name.toUpperCase() === currentTier)?.monthlyTokens ||
+          0);
+
       setCurrentTier(data.subscriptionTier);
       toast({
         variant: 'success',
         title: 'Success',
-        description: `Your subscription has been updated to ${newTier.toLowerCase()}.`,
+        description: `Your subscription has been ${isDowngrade ? 'downgraded' : 'upgraded'} to ${newTier.toLowerCase()}.`,
       });
 
       // Refresh token status
@@ -143,18 +136,14 @@ export default function AccountPage() {
         tiers.find(
           t => t.name.toUpperCase() === accountData.subscriptionTier
         ) || tiers[0];
-
       setTokenStatus({
-        ...accountData.tokenStatus,
+        currentUsage: accountData.tokenStatus.currentUsage,
         limit: tier.monthlyTokens,
         usagePercentage:
           (accountData.tokenStatus.currentUsage / tier.monthlyTokens) * 100,
-        canUseTokens: accountData.tokenStatus.currentUsage < tier.monthlyTokens,
-        isNearLimit:
-          accountData.tokenStatus.currentUsage / tier.monthlyTokens >= 0.8,
       });
     } catch (error) {
-      console.error('Error updating subscription:', error);
+      console.error('Error upgrading subscription:', error);
       toast({
         title: 'Error',
         description:
@@ -168,99 +157,89 @@ export default function AccountPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8">Loading account details...</div>;
-  }
-
-  if (!user) {
-    return <div className="p-8">Please sign in to view your account.</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="w-8 h-8" />
+      </div>
+    );
   }
 
   return (
-    <div className="container p-8 mx-auto">
-      <h1 className="mb-8 text-3xl font-bold">Account Settings</h1>
+    <>
+      <SignedIn>
+        <div className="p-8">
+          <h1 className="mb-8 text-3xl font-bold">Account Settings</h1>
 
-      <TokenWarnings tokenStatus={tokenStatus} className="mb-4" />
+          {/* Token Usage Section */}
+          {tokenStatus && (
+            <Card className="p-6 mb-8">
+              <h2 className="mb-4 text-xl font-semibold">Token Usage</h2>
+              <TokenUsageChart
+                currentUsage={tokenStatus.currentUsage}
+                limit={tokenStatus.limit}
+                usagePercentage={tokenStatus.usagePercentage}
+              />
+            </Card>
+          )}
 
-      {/* Current Usage */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Current Usage</CardTitle>
-          <CardDescription>Your token usage this month</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>
-                {tokenStatus.currentUsage.toLocaleString()} tokens used
-              </span>
-              <span>{tokenStatus.limit.toLocaleString()} tokens limit</span>
-            </div>
-            <Progress value={tokenStatus.usagePercentage} className="h-2" />
+          {/* Subscription Tiers */}
+          <h2 className="mb-4 text-xl font-semibold">Subscription Plans</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {tiers.map(tier => (
+              <Card key={tier.name} className="p-6">
+                <h3 className="mb-2 text-lg font-medium">{tier.name}</h3>
+                <p className="mb-4 text-2xl font-bold">${tier.price}/month</p>
+                <ul className="mb-6 space-y-2">
+                  {tier.features.map(feature => (
+                    <li key={feature} className="flex items-center">
+                      <Check className="w-4 h-4 mr-2 text-primary" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className="w-full"
+                  variant={
+                    tier.name.toUpperCase() === currentTier
+                      ? 'outline'
+                      : tier.monthlyTokens <
+                          (tiers.find(t => t.name.toUpperCase() === currentTier)
+                            ?.monthlyTokens || 0)
+                        ? 'destructive'
+                        : 'success'
+                  }
+                  disabled={
+                    tier.name.toUpperCase() === currentTier ||
+                    updatingTier === tier.name.toUpperCase()
+                  }
+                  onClick={() => handleUpgrade(tier.name.toUpperCase())}
+                >
+                  {updatingTier === tier.name.toUpperCase() ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : tier.name.toUpperCase() === currentTier ? (
+                    'Current Plan'
+                  ) : (
+                    <>
+                      {tier.monthlyTokens <
+                      (tiers.find(t => t.name.toUpperCase() === currentTier)
+                        ?.monthlyTokens || 0)
+                        ? 'Downgrade'
+                        : 'Upgrade'}
+                    </>
+                  )}
+                </Button>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Subscription Tiers */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {tiers.map(tier => (
-          <Card
-            key={tier.name}
-            className={
-              tier.name.toUpperCase() === currentTier ? 'border-primary' : ''
-            }
-          >
-            <CardHeader>
-              <CardTitle>{tier.name}</CardTitle>
-              <CardDescription>${tier.price}/month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {tier.features.map(feature => (
-                  <li key={feature} className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-primary" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                variant={
-                  tier.name.toUpperCase() === currentTier
-                    ? 'outline'
-                    : 'default'
-                }
-                disabled={
-                  tier.name.toUpperCase() === currentTier ||
-                  updatingTier === tier.name.toUpperCase()
-                }
-                onClick={() =>
-                  handleSubscriptionChange(tier.name.toUpperCase())
-                }
-              >
-                {updatingTier === tier.name.toUpperCase() ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Updating...
-                  </>
-                ) : tier.name.toUpperCase() === currentTier ? (
-                  'Current Plan'
-                ) : (
-                  <>
-                    {tier.monthlyTokens <
-                    (tiers.find(t => t.name.toUpperCase() === currentTier)
-                      ?.monthlyTokens || 0)
-                      ? 'Downgrade'
-                      : 'Upgrade'}
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    </div>
+        </div>
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
   );
 }

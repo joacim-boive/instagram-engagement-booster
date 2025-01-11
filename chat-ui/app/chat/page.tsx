@@ -13,7 +13,6 @@ import { TypingIndicator } from '@/components/ui/typing-indicator';
 import SettingsForm from '@/components/settings-form';
 import { TokenWarnings } from '@/components/token-warnings';
 import { TokenLimitModal } from '@/components/token-limit-modal';
-import { InstagramPanel } from '@/components/instagram/instagram-panel';
 import { cn } from '@/lib/utils';
 
 type Message = {
@@ -230,13 +229,8 @@ export default function ChatPage() {
           !tokenStatus?.canUseTokens && 'opacity-50 pointer-events-none'
         )}
       >
-        <div className="grid grid-cols-[300px_1fr_400px] h-screen">
-          {/* Left Column - Instagram Posts */}
-          <div className="border-r">
-            <InstagramPanel />
-          </div>
-
-          {/* Middle Column - Chat Interface */}
+        <div className="grid grid-cols-[1fr_400px] h-screen">
+          {/* Chat Interface */}
           <div className="flex flex-col h-[calc(100vh-6rem)]">
             {!isValid && (
               <div className="p-4">

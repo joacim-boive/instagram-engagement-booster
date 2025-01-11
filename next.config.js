@@ -3,7 +3,7 @@ const nextConfig = {
   productionBrowserSourceMaps: true,
   webpack: (config, { dev, isServer }) => {
     // Enable separate source maps
-    config.devtool = 'source-map';
+    //config.devtool = 'source-map';
 
     // Improve chunk loading in development
     if (dev && !isServer) {
