@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 export const settingsSchema = z.object({
+  // Instagram settings
+  instagramHandle: z.string().optional(),
+  instagramAccessToken: z.string().optional(),
+
+  // Facebook settings
   facebookPageId: z
     .string()
     .regex(

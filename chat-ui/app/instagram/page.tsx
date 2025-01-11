@@ -1,10 +1,10 @@
 'use client';
 
-import { ChatPanel } from './components/chat-panel';
+import { InstagramPanel } from './components/instagram-panel';
 import { useAuth } from '@clerk/nextjs';
 import { Spinner } from '@/components/ui/spinner';
 
-export default function ChatPage() {
+export default function InstagramPage() {
   const { isLoaded: isAuthLoaded } = useAuth();
 
   if (!isAuthLoaded) {
@@ -18,7 +18,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-full">
       <div className="flex-1 h-full">
-        <ChatPanel />
+        <InstagramPanel />
       </div>
     </div>
   );
