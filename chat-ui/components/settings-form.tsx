@@ -47,54 +47,62 @@ type SettingsFormProps = {
 export default function SettingsForm({ onClose }: SettingsFormProps) {
   const { settings, refreshSettings } = useSettings();
   const { toast } = useToast();
+  console.log('SettingsForm rendered with settings:', settings);
+
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      facebookPageId: '',
-      userPrompt: '',
-      aiProvider: 'openai',
-      openaiApiKey: '',
-      openaiModel: defaultModels.openaiModel,
-      anthropicApiKey: '',
-      anthropicModel: defaultModels.anthropicModel,
-    },
+    defaultValues: settings
+      ? {
+          facebookPageId: settings.facebookPageId || '',
+          userPrompt: settings.userPrompt || '',
+          aiProvider: settings.aiProvider || 'openai',
+          openaiApiKey: settings.openaiApiKey || '',
+          openaiModel: settings.openaiModel || '',
+          anthropicApiKey: settings.anthropicApiKey || '',
+          anthropicModel: settings.anthropicModel || '',
+        }
+      : {
+          facebookPageId: '',
+          userPrompt: '',
+          aiProvider: 'openai',
+          openaiApiKey: '',
+          openaiModel: '',
+          anthropicApiKey: '',
+          anthropicModel: '',
+        },
   });
 
   const { isSubmitting } = form.formState;
 
   useEffect(() => {
+    console.log('Settings changed in form:', settings);
     if (settings) {
-      form.reset({
+      console.log('Resetting form with settings:', settings);
+      const formData = {
         facebookPageId: settings.facebookPageId || '',
         userPrompt: settings.userPrompt || '',
         aiProvider: settings.aiProvider || 'openai',
         openaiApiKey: settings.openaiApiKey || '',
-        openaiModel: settings.openaiModel || defaultModels.openaiModel,
+        openaiModel: settings.openaiModel || '',
         anthropicApiKey: settings.anthropicApiKey || '',
-        anthropicModel: settings.anthropicModel || defaultModels.anthropicModel,
-      });
-    } else {
-      // Reset to default values when no settings exist
-      form.reset({
-        facebookPageId: '',
-        userPrompt: '',
-        aiProvider: 'openai',
-        openaiApiKey: '',
-        openaiModel: defaultModels.openaiModel,
-        anthropicApiKey: '',
-        anthropicModel: defaultModels.anthropicModel,
-      });
+        anthropicModel: settings.anthropicModel,
+      };
+      console.log('Form data to set:', formData);
+      form.reset(formData);
     }
   }, [settings, form]);
 
   const onSubmit = async (data: SettingsFormData) => {
+    console.log('Submitting form with data:', data);
     try {
       if (!settings) {
+        console.log('Creating new settings');
         await axios.post('/api/settings', {
           name: 'Default Configuration',
           ...data,
         });
       } else {
+        console.log('Updating existing settings:', settings.id);
         await axios.put('/api/settings', {
           id: settings.id,
           updates: data,
@@ -102,14 +110,13 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
       }
       await refreshSettings();
       toast({
+        variant: 'success',
         title: 'Settings saved',
         description: 'Your settings have been updated successfully.',
-        duration: 3000,
-        variant: 'info',
       });
       onClose();
     } catch (error) {
-      console.error('Error updating settings:', error);
+      console.error('Error saving settings:', error);
       toast({
         title: 'Error',
         description: 'Failed to save settings. Please try again.',
@@ -210,8 +217,14 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                 Personal Details <span className="text-red-500">*</span>
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    <TooltipTrigger asChild onClick={e => e.preventDefault()}>
+                      <button
+                        type="button"
+                        className="hover:opacity-80"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -247,13 +260,16 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
             <FormItem>
               <FormLabel>AI Provider</FormLabel>
               <Select
+                defaultValue={settings?.aiProvider || 'openai'}
                 value={field.value}
                 onValueChange={field.onChange}
                 disabled={isSubmitting}
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select provider" />
+                    <SelectValue>
+                      {field.value === 'openai' ? 'OpenAI' : 'Anthropic'}
+                    </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -277,7 +293,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      type="password"
+                      type="text"
                       placeholder="Leave empty to use system default"
                       disabled={isSubmitting}
                     />
@@ -300,13 +316,21 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="Leave empty to use system default"
-                      disabled={isSubmitting}
+                      placeholder={defaultModels.openaiModel}
+                      disabled={isSubmitting || !form.watch('openaiApiKey')}
+                      onChange={e => {
+                        if (!form.watch('openaiApiKey')) {
+                          e.preventDefault();
+                          return;
+                        }
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                   <p className="text-sm text-muted-foreground">
-                    The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to
-                    use the system default model.
+                    {!form.watch('openaiApiKey')
+                      ? 'Provide your OpenAI API key to customize the model'
+                      : 'The OpenAI model to use (e.g., gpt-4o-mini). Leave empty to use the system default model.'}
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -326,7 +350,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      type="password"
+                      type="text"
                       placeholder="Leave empty to use system default"
                       disabled={isSubmitting}
                     />
@@ -349,13 +373,21 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="Leave empty to use system default"
-                      disabled={isSubmitting}
+                      placeholder={defaultModels.anthropicModel}
+                      disabled={isSubmitting || !form.watch('anthropicApiKey')}
+                      onChange={e => {
+                        if (!form.watch('anthropicApiKey')) {
+                          e.preventDefault();
+                          return;
+                        }
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                   <p className="text-sm text-muted-foreground">
-                    The Anthropic model to use (e.g., claude-3-opus-20240229).
-                    Leave empty to use the system default model.
+                    {!form.watch('anthropicApiKey')
+                      ? 'Provide your Anthropic API key to customize the model'
+                      : 'The Anthropic model to use (e.g., claude-3-5-haiku-20241022). Leave empty to use the system default model.'}
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -366,7 +398,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Save
           </Button>
         </div>
