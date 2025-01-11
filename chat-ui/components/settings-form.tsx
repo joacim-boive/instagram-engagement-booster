@@ -53,7 +53,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
     resolver: zodResolver(settingsSchema),
     defaultValues: settings
       ? {
-          instagramPageId: settings.instagramPageId || '',
+          instagramHandle: settings.instagramHandle || '',
           instagramAccessToken: settings.instagramAccessToken || '',
           facebookPageId: settings.facebookPageId || '',
           userPrompt: settings.userPrompt || '',
@@ -64,7 +64,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
           anthropicModel: settings.anthropicModel || '',
         }
       : {
-          instagramPageId: '',
+          instagramHandle: '',
           instagramAccessToken: '',
           facebookPageId: '',
           userPrompt: '',
@@ -86,7 +86,6 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
         openaiApiKey: settings.openaiApiKey,
         openaiModel: settings.openaiModel,
         anthropicApiKey: settings.anthropicApiKey,
-        instagramPageId: settings.instagramPageId,
         instagramHandle: settings.instagramHandle,
         instagramAccessToken: settings.instagramAccessToken,
         facebookPageId: settings.facebookPageId,
@@ -135,7 +134,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
           <h3 className="text-lg font-medium">Instagram Connection</h3>
           <div className="flex items-center gap-2">
             <div className="flex-grow">
-              {form.watch('instagramPageId') ? (
+              {form.watch('instagramHandle') ? (
                 <div className="text-sm text-muted-foreground">
                   Connected to Instagram: @{form.watch('instagramHandle')}
                 </div>
@@ -185,7 +184,7 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                             if (statusResponse.data.pageId) {
                               clearInterval(interval);
                               form.setValue(
-                                'instagramPageId',
+                                'instagramHandle',
                                 statusResponse.data.pageId
                               );
                               toast({
@@ -219,14 +218,13 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                 </div>
               )}
             </div>
-            {form.watch('instagramPageId') && (
+            {form.watch('instagramHandle') && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  form.setValue('instagramPageId', '');
-                  form.setValue('instagramAccessToken', '');
                   form.setValue('instagramHandle', '');
+                  form.setValue('instagramAccessToken', '');
                 }}
               >
                 <Instagram className="w-4 h-4 mr-2" />

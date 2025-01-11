@@ -24,7 +24,6 @@ export async function POST(request: Request) {
     await prisma.user.update({
       where: { id: userId },
       data: {
-        instagramPageId: handle,
         instagramHandle: handle,
       },
     });
