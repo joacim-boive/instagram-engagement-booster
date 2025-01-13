@@ -125,4 +125,35 @@ export class InstagramService {
         : undefined,
     }));
   }
+
+  static async getConfigAndPosts(limit = 100): Promise<{
+    posts: InstagramPost[];
+    error?: string;
+  }> {
+    try {
+      const configResponse = await axios.get('/api/instagram/config');
+      const { instagramHandle, instagramAccessToken } = configResponse.data;
+
+      if (!instagramHandle || !instagramAccessToken) {
+        return {
+          posts: [],
+          error: 'Please configure your Instagram credentials',
+        };
+      }
+
+      const instagram = new InstagramService(
+        instagramAccessToken,
+        instagramHandle
+      );
+      const posts = await instagram.getRecentPosts(limit);
+
+      return { posts };
+    } catch (error) {
+      console.error('Error fetching Instagram data:', error);
+      return {
+        posts: [],
+        error: 'Failed to load Instagram posts',
+      };
+    }
+  }
 }
