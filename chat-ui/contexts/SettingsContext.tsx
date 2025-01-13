@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import axios from 'axios';
-import type { UserSettings } from '@/services/settingsService';
+import type { UserSettings } from '@/types/settings';
 
 export const isSettingsValid = (settings: UserSettings | null): boolean => {
   if (!settings) return false;

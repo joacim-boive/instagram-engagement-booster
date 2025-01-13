@@ -106,7 +106,6 @@ export async function GET(request: NextRequest) {
         where: { id: actualUserId },
         data: {
           instagramAccessToken: page.access_token,
-          instagramPageId: instagramAccountId,
         },
       });
 

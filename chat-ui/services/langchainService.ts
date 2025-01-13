@@ -6,7 +6,7 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
-import type { UserSettings } from './settingsService';
+import type { UserSettings } from '@/types/settings';
 import { serverEnv } from '@/config/server-env';
 import type { Conversation } from './ai/types';
 import { readFileSync } from 'fs';
