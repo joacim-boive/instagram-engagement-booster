@@ -1,15 +1,17 @@
 {
-  "id": "e7a11807-984e-466d-a1b0-95e3196b919d",
-  "userId": "user_2rOQesGpMtOIiYRkofMed0ryw5J",
-  "name": "Default Configuration",
   "aiProvider": "openai",
-  "userPrompt": "Things to know about me!",
+  "anthropicApiKey": "",
   "createdAt": "2025-01-11T12:26:36.812Z",
   "updatedAt": "2025-01-11T13:16:36.409Z",
   "instagramAccessToken": "",
   "facebookPageId": "423406794855201",
+  "id": "e7a11807-984e-466d-a1b0-95e3196b919d",
+  "instagramAccessToken": "",
+  "instagramHandle": "jboive",
+  "name": "Default Configuration",
   "openaiApiKey": "",
   "openaiModel": "",
-  "anthropicApiKey": "",
-  "instagramHandle": "jboive"
+  "updatedAt": "2025-01-11T13:16:36.409Z",
+  "userId": "user_2rOQesGpMtOIiYRkofMed0ryw5J",
+  "userPrompt": "Things to know about me!"
 }

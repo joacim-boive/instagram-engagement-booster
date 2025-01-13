@@ -39,7 +39,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@clerk/types": "^4.40.0",
+    "@clerk/types": "^4.40.2",
     "@eslint/eslintrc": "^3",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

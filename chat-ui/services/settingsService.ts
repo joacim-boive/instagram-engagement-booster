@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { auth } from '@clerk/nextjs/server';
-import { UserSettings } from '../types/settings';
+import { UserSettings } from '@/types/settings';
 
 const SETTINGS_DIR = path.join(process.cwd(), 'data', 'settings');
 
@@ -107,7 +107,6 @@ export async function updateUserSettings(
       ...updates,
       updatedAt: new Date(),
     };
-
     // Write as a single object, not an array
     await fs.writeFile(filePath, JSON.stringify(updatedSettings, null, 2));
     return updatedSettings;
