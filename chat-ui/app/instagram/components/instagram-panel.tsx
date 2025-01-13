@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PostList } from './post-list';
 import { CommentThread } from './comment-thread';
 import {
@@ -8,59 +8,60 @@ import {
   type InstagramPost,
 } from '@/services/instagramService';
 import { ConfigService } from '@/services/configService';
-import { useQuery } from '@tanstack/react-query';
 
 export function InstagramPanel() {
+  const [posts, setPosts] = useState<InstagramPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<InstagramPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: posts,
-    error,
-    isLoading,
-  } = useQuery({
-    queryKey: ['instagram-posts'],
-    queryFn: async () => {
-      const config = await ConfigService.getInstagramConfig();
-      if (!config) {
-        throw new Error('Please configure your Instagram credentials');
+  useEffect(() => {
+    async function loadPosts() {
+      try {
+        const config = await ConfigService.getInstagramConfig();
+        if (!config) {
+          setError('Please configure your Instagram credentials');
+          return;
+        }
+
+        const instagram = new InstagramService(
+          config.accessToken,
+          config.instagramHandle
+        );
+        const fetchedPosts = await instagram.getRecentPosts();
+        setPosts(fetchedPosts);
+      } catch (error) {
+        console.error('Error fetching Instagram posts:', error);
+        setError('Failed to load Instagram posts');
+      } finally {
+        setIsLoading(false);
       }
+    }
 
-      const instagram = new InstagramService(config.accessToken, config.pageId);
-      return instagram.getRecentPosts();
-    },
-    staleTime: Infinity, // Keep the data forever until manually invalidated
-    retry: false, // Don't retry on error
-  });
-
-  if (isLoading) {
-    return <p className="text-muted-foreground">Loading posts...</p>;
-  }
-
-  if (error) {
-    return (
-      <p className="text-muted-foreground">
-        {error instanceof Error
-          ? error.message
-          : 'Failed to load Instagram posts'}
-      </p>
-    );
-  }
-
-  if (!posts?.length) {
-    return <p className="text-muted-foreground">No posts found</p>;
-  }
+    loadPosts();
+  }, []);
 
   return (
-    <div className="space-y-4">
-      <PostList
-        posts={posts}
-        selectedPostId={selectedPost?.id}
-        onSelectPost={setSelectedPost}
-      />
-      {selectedPost && (
-        <div className="mt-4">
-          <CommentThread comments={selectedPost.comments} />
+    <div className="h-full p-4">
+      {isLoading ? (
+        <p className="text-muted-foreground">Loading posts...</p>
+      ) : error ? (
+        <p className="text-muted-foreground">{error}</p>
+      ) : posts.length > 0 ? (
+        <div className="space-y-4">
+          <PostList
+            posts={posts}
+            selectedPostId={selectedPost?.id}
+            onSelectPost={setSelectedPost}
+          />
+          {selectedPost && (
+            <div className="mt-4">
+              <CommentThread comments={selectedPost.comments} />
+            </div>
+          )}
         </div>
+      ) : (
+        <p className="text-muted-foreground">No posts found</p>
       )}
     </div>
   );

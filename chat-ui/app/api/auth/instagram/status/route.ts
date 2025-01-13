@@ -16,15 +16,13 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        instagramPageId: true,
         instagramAccessToken: true,
         instagramHandle: true,
       },
     });
 
     return NextResponse.json({
-      connected: !!(user?.instagramPageId && user?.instagramAccessToken),
-      pageId: user?.instagramPageId,
+      connected: !!(user?.instagramAccessToken),
       handle: user?.instagramHandle,
     });
   } catch (error) {

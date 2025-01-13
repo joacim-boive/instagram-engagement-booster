@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export type SocialConfig = {
-  pageId: string;
+  instagramHandle: string;
   accessToken: string;
 };
 
@@ -9,13 +9,13 @@ export class ConfigService {
   static async getInstagramConfig(): Promise<SocialConfig | null> {
     try {
       const response = await axios.get('/api/instagram/config');
-      const user = response.data;
-      if (!user?.instagramPageId || !user?.instagramAccessToken) {
+      const { instagramHandle, instagramAccessToken } = response.data;
+      if (!instagramHandle || !instagramAccessToken) {
         return null;
       }
       return {
-        pageId: user.instagramPageId,
-        accessToken: user.instagramAccessToken,
+        instagramHandle,
+        accessToken: instagramAccessToken,
       };
     } catch (error) {
       console.error('Error fetching Instagram config:', error);

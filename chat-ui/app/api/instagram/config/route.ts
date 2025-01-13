@@ -24,16 +24,16 @@ export async function POST(request: Request) {
   }
 
   const data = await request.json();
-  const { pageId, accessToken } = data;
+  const { instagramHandle, accessToken } = data;
 
-  if (!pageId || !accessToken) {
+  if (!instagramHandle || !accessToken) {
     return new NextResponse('Missing required fields', { status: 400 });
   }
 
   await prisma.user.update({
     where: { id: userId },
     data: {
-      instagramPageId: pageId,
+      instagramHandle,
       instagramAccessToken: accessToken,
     },
   });
