@@ -7,7 +7,7 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
 import type { UserSettings } from '@/types/settings';
-import { serverEnv } from '@/config/server-env';
+import { serverEnv } from '../app/config/server-env';
 import type { Conversation } from './ai/types';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -32,7 +32,7 @@ export class LangChainService {
   private isInitializing = false;
   private pageId: string;
 
-  constructor(settings?: UserSettings | null) {
+  constructor(settings: UserSettings | null) {
     console.log('LangChain: Constructing service with settings:', settings);
 
     // Load system prompt from system-prompt.txt

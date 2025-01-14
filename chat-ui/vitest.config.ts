@@ -1,8 +1,9 @@
+import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: [
@@ -49,6 +50,7 @@ export default defineConfig({
     ],
   },
   test: {
+    env: loadEnv(mode, process.cwd(), ''),
     environment: 'jsdom',
     globals: true,
     setupFiles: './tests/setup.ts',
@@ -59,4 +61,4 @@ export default defineConfig({
       exclude: ['node_modules/', 'tests/setup.ts'],
     },
   },
-});
+}));
