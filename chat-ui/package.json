@@ -75,6 +75,7 @@
     "test:coverage": "vitest run --coverage",
     "test:debug": "vitest --threads=false",
     "test:ui": "vitest --ui",
+    "test:watch": "vitest watch",
     "type-check": "tsc --noEmit"
   },
   "version": "0.1.0"
