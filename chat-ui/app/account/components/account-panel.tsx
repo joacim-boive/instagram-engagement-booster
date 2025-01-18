@@ -143,11 +143,12 @@ export function AccountPanel() {
         tiers.find(
           t => t.name.toUpperCase() === accountData.subscriptionTier
         ) || tiers[0];
+      const currentUsage = accountData.tokenStatus.currentUsage;
+      const limit = tier.monthlyTokens;
       setTokenStatus({
-        currentUsage: accountData.tokenStatus.currentUsage,
-        limit: tier.monthlyTokens,
-        usagePercentage:
-          (accountData.tokenStatus.currentUsage / tier.monthlyTokens) * 100,
+        currentUsage,
+        limit,
+        usagePercentage: Math.min((currentUsage / limit) * 100, 100), // Cap at 100%
       });
     } catch (error) {
       console.error('Error upgrading subscription:', error);

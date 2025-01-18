@@ -1,5 +1,5 @@
 import { serverEnv } from '@/config/server-env';
-import type { UserSettings } from '@/services/settingsService';
+import type { UserSettings } from '@/types/settings';
 
 export function getCurrentModel(settings: UserSettings): string {
   return settings.aiProvider === 'openai'

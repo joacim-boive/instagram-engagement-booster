@@ -34,7 +34,7 @@ export class UserService {
         subscriptionId: true,
         subscriptionTier: true,
         monthlyTokens: true,
-        instagramPageId: true,
+        instagramHandle: true,
         instagramAccessToken: true,
         createdAt: true,
         updatedAt: true,

@@ -7,60 +7,41 @@ import {
   InstagramService,
   type InstagramPost,
 } from '@/services/instagramService';
-import { ConfigService } from '@/services/configService';
 import { useQuery } from '@tanstack/react-query';
 
 export function InstagramPanel() {
   const [selectedPost, setSelectedPost] = useState<InstagramPost | null>(null);
 
-  const {
-    data: posts,
-    error,
-    isLoading,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['instagram-posts'],
-    queryFn: async () => {
-      const config = await ConfigService.getInstagramConfig();
-      if (!config) {
-        throw new Error('Please configure your Instagram credentials');
-      }
-
-      const instagram = new InstagramService(config.accessToken, config.pageId);
-      return instagram.getRecentPosts();
-    },
-    staleTime: Infinity, // Keep the data forever until manually invalidated
-    retry: false, // Don't retry on error
+    queryFn: () => InstagramService.getConfigAndPosts(),
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
   });
 
-  if (isLoading) {
-    return <p className="text-muted-foreground">Loading posts...</p>;
-  }
-
-  if (error) {
-    return (
-      <p className="text-muted-foreground">
-        {error instanceof Error
-          ? error.message
-          : 'Failed to load Instagram posts'}
-      </p>
-    );
-  }
-
-  if (!posts?.length) {
-    return <p className="text-muted-foreground">No posts found</p>;
-  }
-
   return (
-    <div className="space-y-4">
-      <PostList
-        posts={posts}
-        selectedPostId={selectedPost?.id}
-        onSelectPost={setSelectedPost}
-      />
-      {selectedPost && (
-        <div className="mt-4">
-          <CommentThread comments={selectedPost.comments} />
+    <div className="h-full p-4">
+      {isLoading ? (
+        <p className="text-muted-foreground">Loading posts...</p>
+      ) : error || data?.error ? (
+        <p className="text-muted-foreground">
+          {data?.error || 'An error occurred'}
+        </p>
+      ) : data?.posts.length ? (
+        <div className="space-y-4">
+          <PostList
+            posts={data.posts}
+            selectedPostId={selectedPost?.id}
+            onSelectPost={setSelectedPost}
+          />
+          {selectedPost && (
+            <div className="mt-4">
+              <CommentThread comments={selectedPost.comments} />
+            </div>
+          )}
         </div>
+      ) : (
+        <p className="text-muted-foreground">No posts found</p>
       )}
     </div>
   );

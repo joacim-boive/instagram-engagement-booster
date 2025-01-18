@@ -19,10 +19,8 @@ Technical Stack Requirements:
 
 Best Practices:
   - Always supply the entire code - never use any comments like this   // ... rest of the file remains the same ...
-  - Always use Shadcn UI components
+  - Always use Shadcn components
   - Write typesafe code for .ts and .tsx files
   - Avoid regex unless it's the simplest solution
   - Use React refs instead of element IDs
-  - Never remove functionality without explicit consent
   - Take a step-by-step approach to problem-solving
-  - Never hallucinate or make up answers - admit when you don't know

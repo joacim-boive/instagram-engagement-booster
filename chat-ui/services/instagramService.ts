@@ -50,17 +50,37 @@ type InstagramCommentResponse = {
 
 export class InstagramService {
   private accessToken: string;
-  private pageId: string;
+  private instagramHandle: string;
 
-  constructor(accessToken: string, pageId: string) {
+  constructor(accessToken: string, instagramHandle: string) {
     this.accessToken = accessToken;
-    this.pageId = pageId;
+    this.instagramHandle = instagramHandle;
+  }
+
+  private async getInstagramBusinessAccountId(): Promise<string> {
+    const response = await axios.get(
+      `https://graph.facebook.com/v21.0/${this.instagramHandle}`,
+      {
+        params: {
+          fields: 'instagram_business_account',
+          access_token: this.accessToken,
+        },
+      }
+    );
+
+    if (!response.data.instagram_business_account?.id) {
+      throw new Error('Instagram Business Account ID not found');
+    }
+
+    return response.data.instagram_business_account.id;
   }
 
   async getRecentPosts(limit = 100): Promise<InstagramPost[]> {
     try {
+      const igBusinessId = await this.getInstagramBusinessAccountId();
+
       const mediaResponse = await axios.get<InstagramMediaResponse>(
-        `https://graph.facebook.com/v21.0/${this.pageId}/media`,
+        `https://graph.facebook.com/v21.0/${igBusinessId}/media`,
         {
           params: {
             fields:
@@ -79,7 +99,10 @@ export class InstagramService {
         permalink: post.permalink,
         timestamp: post.timestamp,
         caption: post.caption,
-        comments: this.processComments(post.comments?.data || [], this.pageId),
+        comments: this.processComments(
+          post.comments?.data || [],
+          this.instagramHandle
+        ),
       }));
     } catch (error) {
       console.error('Error fetching Instagram posts:', error);
@@ -101,5 +124,36 @@ export class InstagramService {
         ? this.processComments(comment.replies.data, instagramAccountId)
         : undefined,
     }));
+  }
+
+  static async getConfigAndPosts(limit = 100): Promise<{
+    posts: InstagramPost[];
+    error?: string;
+  }> {
+    try {
+      const configResponse = await axios.get('/api/instagram/config');
+      const { instagramHandle, instagramAccessToken } = configResponse.data;
+
+      if (!instagramHandle || !instagramAccessToken) {
+        return {
+          posts: [],
+          error: 'Please configure your Instagram credentials',
+        };
+      }
+
+      const instagram = new InstagramService(
+        instagramAccessToken,
+        instagramHandle
+      );
+      const posts = await instagram.getRecentPosts(limit);
+
+      return { posts };
+    } catch (error) {
+      console.error('Error fetching Instagram data:', error);
+      return {
+        posts: [],
+        error: 'Failed to load Instagram posts',
+      };
+    }
   }
 }

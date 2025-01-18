@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,6 +48,10 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
   const { settings, refreshSettings } = useSettings();
   const { toast } = useToast();
   console.log('SettingsForm rendered with settings:', settings);
+
+  const [isInstagramConnected, setIsInstagramConnected] = useState(
+    !!settings?.instagramHandle
+  );
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -134,19 +138,26 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
           <h3 className="text-lg font-medium">Instagram Connection</h3>
           <div className="flex items-center gap-2">
             <div className="flex-grow">
-              {form.watch('instagramHandle') ? (
+              {isInstagramConnected ? (
                 <div className="text-sm text-muted-foreground">
                   Connected to Instagram: @{form.watch('instagramHandle')}
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter your Instagram handle (e.g. jboive)"
-                    onChange={e =>
-                      form.setValue('instagramHandle', e.target.value)
-                    }
-                    value={form.watch('instagramHandle') || ''}
-                    className="flex-grow"
+                  <FormField
+                    control={form.control}
+                    name="instagramHandle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Enter your Instagram handle (e.g. jboive)"
+                            className="flex-grow"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
                   <Button
                     type="button"
@@ -163,44 +174,15 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                       }
 
                       try {
-                        const response = await axios.post(
-                          '/api/auth/instagram/init',
-                          {
-                            handle,
-                          }
-                        );
-                        window.open(
-                          response.data.authUrl,
-                          '_blank',
-                          'width=600,height=800'
-                        );
-
-                        // Poll for completion
-                        const interval = setInterval(async () => {
-                          try {
-                            const statusResponse = await axios.get(
-                              '/api/auth/instagram/status'
-                            );
-                            if (statusResponse.data.pageId) {
-                              clearInterval(interval);
-                              form.setValue(
-                                'instagramHandle',
-                                statusResponse.data.pageId
-                              );
-                              toast({
-                                title: 'Success',
-                                description:
-                                  'Instagram connected successfully.',
-                                variant: 'success',
-                              });
-                            }
-                          } catch (error) {
-                            console.error('Error checking auth status:', error);
-                          }
-                        }, 2000);
-
-                        // Clear interval after 2 minutes
-                        setTimeout(() => clearInterval(interval), 120000);
+                        await axios.post('/api/auth/instagram/init', {
+                          handle,
+                        });
+                        setIsInstagramConnected(true);
+                        toast({
+                          title: 'Success',
+                          description: 'Instagram connected successfully.',
+                          variant: 'success',
+                        });
                       } catch (error) {
                         console.error('Error connecting to Instagram:', error);
                         toast({
@@ -218,13 +200,13 @@ export default function SettingsForm({ onClose }: SettingsFormProps) {
                 </div>
               )}
             </div>
-            {form.watch('instagramHandle') && (
+            {isInstagramConnected && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   form.setValue('instagramHandle', '');
-                  form.setValue('instagramAccessToken', '');
+                  setIsInstagramConnected(false);
                 }}
               >
                 <Instagram className="w-4 h-4 mr-2" />
