@@ -18,12 +18,16 @@ export function CommentThread({
   const rowVirtualizer = useVirtualizer({
     count: comments.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120,
+    estimateSize: () => 100,
     overscan: 5,
+    measureElement: element => {
+      // Add extra padding to ensure we capture full height
+      return element.getBoundingClientRect().height + 16;
+    },
   });
 
   return (
-    <div ref={parentRef} className="h-[calc(100vh-20rem)] overflow-y-auto">
+    <div ref={parentRef} className="h-[calc(100vh-12rem)] overflow-y-auto">
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
@@ -36,13 +40,14 @@ export function CommentThread({
           return (
             <div
               key={comment.id}
-              className={`absolute top-0 left-0 w-full p-4 ${
+              data-index={virtualRow.index}
+              ref={rowVirtualizer.measureElement}
+              className={`absolute top-0 left-0 w-full p-4 mb-4 ${
                 selectedCommentId === comment.id
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
               } ${onSelectComment ? 'cursor-pointer' : ''} border rounded-lg`}
               style={{
-                height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
               onClick={() => onSelectComment?.(comment)}
@@ -52,7 +57,7 @@ export function CommentThread({
                   <p className="font-medium">{comment.username}</p>
                   <p className="text-muted-foreground">{comment.text}</p>
                   {comment.timestamp && (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {new Date(comment.timestamp).toLocaleString()}
                     </p>
                   )}

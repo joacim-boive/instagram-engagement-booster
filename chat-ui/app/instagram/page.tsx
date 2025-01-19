@@ -16,7 +16,7 @@ export default function InstagramPage() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-slate-50">
       <div className="flex-1 h-full">
         <InstagramPanel />
       </div>

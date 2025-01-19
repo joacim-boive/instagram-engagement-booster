@@ -47,7 +47,7 @@ export default function ClientLayout({
       <ClerkProvider signInForceRedirectUrl="/chat">
         <SettingsProvider>
           <ClickToComponent editor="cursor" />
-          <div className={cn(inter.className, 'flex h-screen bg-background')}>
+          <div className={cn(inter.className, 'flex h-screen bg-slate-50')}>
             <SignedIn>
               <div className="fixed top-0 bottom-0 left-0 z-30 hidden transition-transform duration-300 ease-in-out transform shadow-lg md:flex md:w-16 md:flex-col animate-slide-in bg-background">
                 <div className="flex flex-col items-center w-full gap-4 py-6">

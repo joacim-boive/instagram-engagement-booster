@@ -82,7 +82,7 @@ export function PostListColumn({
       {
         root: parentRef.current,
         threshold: 0.1,
-        rootMargin: '1024px',
+        rootMargin: '500px',
       }
     );
 

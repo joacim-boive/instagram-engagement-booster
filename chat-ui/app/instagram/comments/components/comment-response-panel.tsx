@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
 import { PostList } from '../../components/post-list';
 import { CommentThread } from '../../components/comment-thread';
 import {
@@ -16,6 +15,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebouncedCallback } from 'use-debounce';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDismiss } from '@/hooks/use-dismiss';
 
 export function CommentResponsePanel() {
   const [selectedPost, setSelectedPost] = useState<InstagramPost | null>(null);
@@ -34,17 +34,6 @@ export function CommentResponsePanel() {
       staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     });
   //TODO staleTime should be a user setting
-
-  // Prefetch next page after initial load
-  useEffect(() => {
-    if (data?.pages[0] && !isLoading && hasNextPage) {
-      const lastPage = data.pages[data.pages.length - 1];
-      if (lastPage.nextCursor) {
-        console.log('Prefetching next page');
-        fetchNextPage();
-      }
-    }
-  }, [data?.pages, isLoading, hasNextPage, fetchNextPage]);
 
   const handleSearch = useDebouncedCallback(() => {
     // Client-side search is handled in PostListColumn
@@ -75,6 +64,11 @@ export function CommentResponsePanel() {
   const allPosts = data?.pages.flatMap(page => page.posts) ?? [];
   const currentError = data?.pages[0]?.error;
   const lastPage = data?.pages[data.pages.length - 1];
+
+  const responseRef = useDismiss({
+    onDismiss: () => setSelectedComment(null),
+    enabled: !!selectedComment,
+  });
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -117,8 +111,9 @@ export function CommentResponsePanel() {
       )}
 
       <div
+        ref={responseRef}
         className={cn(
-          'transform transition-transform duration-300 ease-in-out bg-slate-50 border-t md:fixed md:inset-x-0 md:bottom-0 md:pl-20 drop-shadow-[0_-4px_4px_rgb(0,0,0,0.05)]',
+          'transform transition-transform duration-300 ease-in-out bg-muted border-t md:fixed md:inset-x-0 md:bottom-0 md:pl-20 drop-shadow-[0_-4px_3px_rgb(0,0,0,0.07)]',
           selectedComment ? 'translate-y-0' : 'translate-y-full'
         )}
       >

@@ -32,9 +32,16 @@ export function InstagramPanel() {
       ) : data?.posts.length ? (
         <div className="space-y-4">
           <PostList
-            posts={data.posts}
+            initialData={{
+              posts: data.posts,
+              hasNextPage: false,
+              nextCursor: undefined,
+            }}
             selectedPostId={selectedPost?.id}
             onSelectPost={setSelectedPost}
+            isLoading={false}
+            onLoadMore={() => Promise.resolve()}
+            onSearch={() => {}}
           />
           {selectedPost && (
             <div className="mt-4">
