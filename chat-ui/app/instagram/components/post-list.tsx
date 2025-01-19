@@ -1,30 +1,33 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { InstagramPost } from '@/services/instagramService';
-import { PostCard } from './post-card';
+'use client';
 
-type PostListProps = {
-  posts: InstagramPost[];
-  onSelectPost?: (post: InstagramPost) => void;
+import { PostListColumn } from '../comments/components/post-list-column';
+import { InstagramPost, PaginatedPosts } from '@/services/instagramService';
+
+export type PostListProps = {
+  initialData: PaginatedPosts;
   selectedPostId?: string;
+  onSelectPost: (post: InstagramPost) => void;
+  isLoading?: boolean;
+  onLoadMore: (cursor: string) => Promise<void>;
+  onSearch: (query: string) => void;
 };
 
 export function PostList({
-  posts,
-  onSelectPost,
+  initialData,
   selectedPostId,
+  onSelectPost,
+  isLoading,
+  onLoadMore,
+  onSearch,
 }: PostListProps) {
   return (
-    <ScrollArea className="h-full">
-      <div className="p-4 space-y-4">
-        {posts.map(post => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onClick={() => onSelectPost?.(post)}
-            isSelected={post.id === selectedPostId}
-          />
-        ))}
-      </div>
-    </ScrollArea>
+    <PostListColumn
+      initialData={initialData}
+      selectedPostId={selectedPostId}
+      onSelectPost={onSelectPost}
+      isLoading={isLoading}
+      onLoadMore={onLoadMore}
+      onSearch={onSearch}
+    />
   );
 }

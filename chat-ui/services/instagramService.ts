@@ -33,6 +33,13 @@ type InstagramMediaResponse = {
       data: InstagramCommentResponse[];
     };
   }[];
+  paging?: {
+    cursors: {
+      before: string;
+      after: string;
+    };
+    next?: string;
+  };
 };
 
 type InstagramCommentResponse = {
@@ -46,6 +53,13 @@ type InstagramCommentResponse = {
   replies?: {
     data: InstagramCommentResponse[];
   };
+};
+
+export type PaginatedPosts = {
+  posts: InstagramPost[];
+  hasNextPage: boolean;
+  nextCursor?: string;
+  error?: string;
 };
 
 export class InstagramService {
@@ -75,23 +89,27 @@ export class InstagramService {
     return response.data.instagram_business_account.id;
   }
 
-  async getRecentPosts(limit = 100): Promise<InstagramPost[]> {
+  async getRecentPosts(limit = 25, cursor?: string): Promise<PaginatedPosts> {
     try {
       const igBusinessId = await this.getInstagramBusinessAccountId();
 
+      const params: Record<string, string | number> = {
+        fields:
+          'id,media_type,media_url,thumbnail_url,permalink,timestamp,caption,comments{id,text,timestamp,username,replies{id,text,timestamp,username}}',
+        limit,
+        access_token: this.accessToken,
+      };
+
+      if (cursor) {
+        params.after = cursor;
+      }
+
       const mediaResponse = await axios.get<InstagramMediaResponse>(
         `https://graph.facebook.com/v21.0/${igBusinessId}/media`,
-        {
-          params: {
-            fields:
-              'id,media_type,media_url,thumbnail_url,permalink,timestamp,caption,comments{id,text,timestamp,username,replies{id,text,timestamp,username}}',
-            limit,
-            access_token: this.accessToken,
-          },
-        }
+        { params }
       );
 
-      return mediaResponse.data.data.map(post => ({
+      const posts = mediaResponse.data.data.map(post => ({
         id: post.id,
         media_type: post.media_type,
         media_url: post.media_url,
@@ -104,6 +122,12 @@ export class InstagramService {
           this.instagramHandle
         ),
       }));
+
+      return {
+        posts,
+        hasNextPage: !!mediaResponse.data.paging?.next,
+        nextCursor: mediaResponse.data.paging?.cursors.after,
+      };
     } catch (error) {
       console.error('Error fetching Instagram posts:', error);
       throw error;
@@ -126,10 +150,10 @@ export class InstagramService {
     }));
   }
 
-  static async getConfigAndPosts(limit = 100): Promise<{
-    posts: InstagramPost[];
-    error?: string;
-  }> {
+  static async getConfigAndPosts(
+    limit = 25,
+    cursor?: string
+  ): Promise<PaginatedPosts> {
     try {
       const configResponse = await axios.get('/api/instagram/config');
       const { instagramHandle, instagramAccessToken } = configResponse.data;
@@ -137,6 +161,7 @@ export class InstagramService {
       if (!instagramHandle || !instagramAccessToken) {
         return {
           posts: [],
+          hasNextPage: false,
           error: 'Please configure your Instagram credentials',
         };
       }
@@ -145,15 +170,31 @@ export class InstagramService {
         instagramAccessToken,
         instagramHandle
       );
-      const posts = await instagram.getRecentPosts(limit);
-
-      return { posts };
+      return await instagram.getRecentPosts(limit, cursor);
     } catch (error) {
       console.error('Error fetching Instagram data:', error);
       return {
         posts: [],
+        hasNextPage: false,
         error: 'Failed to load Instagram posts',
       };
+    }
+  }
+
+  static async reply(
+    postId: string,
+    commentId: string,
+    response: string
+  ): Promise<void> {
+    try {
+      await axios.post('/api/instagram/reply', {
+        postId,
+        commentId,
+        response,
+      });
+    } catch (error) {
+      console.error('Error posting reply:', error);
+      throw error;
     }
   }
 }

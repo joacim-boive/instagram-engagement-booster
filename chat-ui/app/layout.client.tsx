@@ -1,11 +1,17 @@
 'use client';
-
+import { ClickToComponent } from 'click-to-react-component';
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, BarChart3, UserCircle2, Instagram } from 'lucide-react';
+import {
+  MessageSquare,
+  BarChart3,
+  UserCircle2,
+  Instagram,
+  MessageCircle,
+} from 'lucide-react';
 import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -17,6 +23,11 @@ const inter = Inter({ subsets: ['latin'] });
 const navigation = [
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Instagram', href: '/instagram', icon: Instagram },
+  {
+    name: 'Comment Responses',
+    href: '/instagram/comments',
+    icon: MessageCircle,
+  },
   { name: 'Statistics', href: '/stats', icon: BarChart3 },
   { name: 'Account', href: '/account', icon: UserCircle2 },
 ];
@@ -35,6 +46,7 @@ export default function ClientLayout({
     <QueryClientProvider client={queryClient}>
       <ClerkProvider signInForceRedirectUrl="/chat">
         <SettingsProvider>
+          <ClickToComponent editor="cursor" />
           <div className={cn(inter.className, 'flex h-screen bg-background')}>
             <SignedIn>
               <div className="fixed top-0 bottom-0 left-0 z-30 hidden transition-transform duration-300 ease-in-out transform shadow-lg md:flex md:w-16 md:flex-col animate-slide-in bg-background">

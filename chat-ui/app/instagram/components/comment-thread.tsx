@@ -1,55 +1,67 @@
-import { InstagramComment } from '@/services/instagramService';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef } from 'react';
+import type { InstagramComment } from '@/services/instagramService';
 
-type CommentThreadProps = {
+export type CommentThreadProps = {
   comments: InstagramComment[];
-  className?: string;
+  selectedCommentId?: string;
+  onSelectComment?: (comment: InstagramComment) => void;
 };
 
-function Comment({ comment }: { comment: InstagramComment }) {
+export function CommentThread({
+  comments,
+  selectedCommentId,
+  onSelectComment,
+}: CommentThreadProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: comments.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 120,
+    overscan: 5,
+  });
+
   return (
-    <div className="space-y-2">
+    <div ref={parentRef} className="h-[calc(100vh-20rem)] overflow-y-auto">
       <div
-        className={cn(
-          'p-3 rounded-lg',
-          comment.isFromPage
-            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100'
-            : 'bg-muted'
-        )}
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
       >
-        <div className="flex justify-between items-start gap-2">
-          <span className="font-medium text-sm">{comment.username}</span>
-          <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(comment.timestamp), {
-              addSuffix: true,
-            })}
-          </span>
-        </div>
-        <p className="mt-1 text-sm whitespace-pre-wrap">{comment.text}</p>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+          const comment = comments[virtualRow.index];
+          return (
+            <div
+              key={comment.id}
+              className={`absolute top-0 left-0 w-full p-4 ${
+                selectedCommentId === comment.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              } ${onSelectComment ? 'cursor-pointer' : ''} border rounded-lg`}
+              style={{
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+              onClick={() => onSelectComment?.(comment)}
+            >
+              <div className="flex items-start gap-2">
+                <div className="flex-1">
+                  <p className="font-medium">{comment.username}</p>
+                  <p className="text-muted-foreground">{comment.text}</p>
+                  {comment.timestamp && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {new Date(comment.timestamp).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-6 space-y-2">
-          {comment.replies.map(reply => (
-            <Comment key={reply.id} comment={reply} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function CommentThread({ comments, className }: CommentThreadProps) {
-  // Sort comments by timestamp
-  const sortedComments = [...comments].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-
-  return (
-    <div className={cn('space-y-4', className)}>
-      {sortedComments.map(comment => (
-        <Comment key={comment.id} comment={comment} />
-      ))}
     </div>
   );
 }

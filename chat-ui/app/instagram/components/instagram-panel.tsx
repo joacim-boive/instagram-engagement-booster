@@ -18,6 +18,8 @@ export function InstagramPanel() {
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
   });
+  //TODO staleTime should be a user setting
+  //TODO gcTime should be a user setting
 
   return (
     <div className="h-full p-4">

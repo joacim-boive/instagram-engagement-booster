@@ -18,7 +18,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "open": "^10.1.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "use-debounce": "^10.0.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
