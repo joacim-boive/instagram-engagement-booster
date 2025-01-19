@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { FormattedDate } from '@/components/ui/formatted-date';
 
 interface PostListColumnProps {
   initialData: PaginatedPosts;
@@ -47,6 +48,9 @@ export function PostListColumn({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 100,
     overscan: 5,
+    measureElement: element => {
+      return element.getBoundingClientRect().height;
+    },
   });
 
   // Set up intersection observer for infinite loading
@@ -82,7 +86,7 @@ export function PostListColumn({
       {
         root: parentRef.current,
         threshold: 0.1,
-        rootMargin: '500px',
+        rootMargin: '100px',
       }
     );
 
@@ -126,12 +130,16 @@ export function PostListColumn({
             return (
               <div
                 key={post.id}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
                 className={cn(
-                  'absolute top-0 left-0 w-full p-3 cursor-pointer hover:bg-accent/50 border-b',
-                  selectedPostId === post.id && 'bg-accent'
+                  'absolute top-0 left-0 w-full py-2 px-3 cursor-pointer border-b transition-colors duration-200 ease-in-out group',
+                  'hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/30 dark:hover:border-blue-800',
+                  selectedPostId === post.id
+                    ? 'bg-blue-100 border-blue-200 dark:bg-blue-950/50 dark:border-blue-800'
+                    : 'hover:shadow-sm'
                 )}
                 style={{
-                  height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
                 onClick={() => onSelectPost(post)}
@@ -140,19 +148,19 @@ export function PostListColumn({
                   <Image
                     src={post.thumbnail_url || post.media_url}
                     alt={post.caption || 'Instagram post'}
-                    width={64}
-                    height={64}
-                    className="object-cover rounded"
+                    width={48}
+                    height={48}
+                    className="flex-shrink-0 object-cover transition-transform duration-200 rounded group-hover:scale-105"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate text-muted-foreground">
+                  <div className="flex flex-col justify-center flex-1 min-w-0">
+                    <p className="text-sm transition-colors duration-200 text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400">
                       {post.caption
                         ? post.caption.slice(0, 50) +
                           (post.caption.length > 50 ? '...' : '')
                         : 'No caption'}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(post.timestamp).toLocaleDateString()}
+                    <p className="text-xs text-muted-foreground">
+                      <FormattedDate date={new Date(post.timestamp)} />
                     </p>
                   </div>
                 </div>
